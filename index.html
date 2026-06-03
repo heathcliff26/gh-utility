@@ -61,7 +61,7 @@
 				
 				<option value="file2">github.com/heathcliff26/gh-utility/cmd/token/cmd.go (67.9%)</option>
 				
-				<option value="file3">github.com/heathcliff26/gh-utility/pkg/client/client.go (92.6%)</option>
+				<option value="file3">github.com/heathcliff26/gh-utility/pkg/client/client.go (92.9%)</option>
 				
 				<option value="file4">github.com/heathcliff26/gh-utility/pkg/client/utils.go (87.5%)</option>
 				
@@ -203,6 +203,7 @@ import (
         "fmt"
         "net/http"
         "os"
+        "strings"
         "time"
 
         "github.com/golang-jwt/jwt/v5"
@@ -233,7 +234,11 @@ func (c *client) GetToken(keyPath string, clientID string, installationID string
         if err != nil </span><span class="cov8" title="1">{
                 return "", fmt.Errorf("failed to read keyfile: %w", err)
         }</span>
-        <span class="cov8" title="1">key, err := jwt.ParseRSAPrivateKeyFromPEM(bytes)
+
+        // Need to replace literal `\n` with actual newlines.
+        // Otherwise it is harder to use this in environments where the key might be passed as a single line string.
+        <span class="cov8" title="1">keyStr := strings.ReplaceAll(string(bytes), `\n`, "\n")
+        key, err := jwt.ParseRSAPrivateKeyFromPEM([]byte(keyStr))
         if err != nil </span><span class="cov8" title="1">{
                 return "", fmt.Errorf("failed to parse keyfile: %w", err)
         }</span>

@@ -59,7 +59,13 @@
 				
 				<option value="file1">github.com/heathcliff26/gh-utility/cmd/main.go (0.0%)</option>
 				
-				<option value="file2">github.com/heathcliff26/gh-utility/pkg/version/version.go (90.0%)</option>
+				<option value="file2">github.com/heathcliff26/gh-utility/cmd/token/cmd.go (67.9%)</option>
+				
+				<option value="file3">github.com/heathcliff26/gh-utility/pkg/client/client.go (92.6%)</option>
+				
+				<option value="file4">github.com/heathcliff26/gh-utility/pkg/client/utils.go (87.5%)</option>
+				
+				<option value="file5">github.com/heathcliff26/gh-utility/pkg/version/version.go (90.0%)</option>
 				
 				</select>
 			</div>
@@ -76,6 +82,7 @@
 		<pre class="file" id="file0" style="display: none">package main
 
 import (
+        "github.com/heathcliff26/gh-utility/cmd/token"
         "github.com/heathcliff26/gh-utility/pkg/version"
         "github.com/spf13/cobra"
 )
@@ -99,6 +106,7 @@ func NewRoot() *cobra.Command <span class="cov8" title="1">{
 
         <span class="cov8" title="1">rootCmd.AddCommand(
                 version.NewCommand(Name),
+                token.NewCommand(),
         )
 
         return rootCmd</span>
@@ -108,7 +116,6 @@ func NewRoot() *cobra.Command <span class="cov8" title="1">{
 		<pre class="file" id="file1" style="display: none">package main
 
 import (
-        "log/slog"
         "os"
 )
 
@@ -116,13 +123,179 @@ func main() <span class="cov0" title="0">{
         cmd := NewRoot()
         err := cmd.Execute()
         if err != nil </span><span class="cov0" title="0">{
-                slog.Error("Command exited with error", "err", err)
                 os.Exit(1)
         }</span>
 }
 </pre>
 		
-		<pre class="file" id="file2" style="display: none">package version
+		<pre class="file" id="file2" style="display: none">package token
+
+import (
+        "os"
+
+        "github.com/heathcliff26/gh-utility/pkg/client"
+        "github.com/spf13/cobra"
+)
+
+const (
+        appKeyPathFlag     = "key"
+        clientIDFlag       = "client"
+        installationIDFlag = "installation"
+)
+
+// Create a new token command
+func NewCommand() *cobra.Command <span class="cov8" title="1">{
+        cmd := &amp;cobra.Command{
+                Use:   "token",
+                Short: "Create a new temporary access token for the app",
+                Run: func(cmd *cobra.Command, _ []string) </span><span class="cov0" title="0">{
+                        err := run(cmd)
+                        if err != nil </span><span class="cov0" title="0">{
+                                cmd.PrintErrln(cmd.ErrPrefix(), err)
+                                os.Exit(1)
+                        }</span>
+                },
+        }
+
+        <span class="cov8" title="1">cmd.Flags().StringP(appKeyPathFlag, "k", "", "Path to the private key of the app")
+        _ = cmd.MarkFlagFilename(appKeyPathFlag)
+        _ = cmd.MarkFlagRequired(appKeyPathFlag)
+
+        cmd.Flags().StringP(clientIDFlag, "c", "", "Client ID of the app")
+        _ = cmd.MarkFlagRequired(clientIDFlag)
+
+        cmd.Flags().StringP(installationIDFlag, "i", "", "Installation ID of the app")
+        _ = cmd.MarkFlagRequired(installationIDFlag)
+
+        return cmd</span>
+}
+
+func run(cmd *cobra.Command) error <span class="cov8" title="1">{
+        keyPath, err := cmd.Flags().GetString(appKeyPathFlag)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">clientID, err := cmd.Flags().GetString(clientIDFlag)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">installationID, err := cmd.Flags().GetString(installationIDFlag)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">c := client.NewClient()
+        token, err := c.GetToken(keyPath, clientID, installationID)
+        if err != nil </span><span class="cov8" title="1">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">cmd.Println(token)
+
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package client
+
+import (
+        "encoding/json"
+        "fmt"
+        "net/http"
+        "os"
+        "time"
+
+        "github.com/golang-jwt/jwt/v5"
+)
+
+const defaultEndpoint = "https://api.github.com"
+
+type client struct {
+        httpClient *http.Client
+        endpoint   string
+}
+
+// Create a new client
+func NewClient() *client <span class="cov8" title="1">{
+        httpClient := http.DefaultClient
+        httpClient.Timeout = 10 * time.Second
+
+        return &amp;client{
+                httpClient: httpClient,
+                endpoint:   defaultEndpoint,
+        }
+}</span>
+
+// Get an installations token for the GitHub app
+// API endpoint: POST /app/installations/{installation_id}/access_tokens
+func (c *client) GetToken(keyPath string, clientID string, installationID string) (string, error) <span class="cov8" title="1">{
+        bytes, err := os.ReadFile(keyPath)
+        if err != nil </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("failed to read keyfile: %w", err)
+        }</span>
+        <span class="cov8" title="1">key, err := jwt.ParseRSAPrivateKeyFromPEM(bytes)
+        if err != nil </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("failed to parse keyfile: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">claims := &amp;jwt.RegisteredClaims{
+                IssuedAt:  jwt.NewNumericDate(time.Now().Add(-time.Minute)),
+                ExpiresAt: jwt.NewNumericDate(time.Now().Add(9 * time.Minute)),
+                Issuer:    clientID,
+        }
+        jwToken := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+        signedJWToken, err := jwToken.SignedString(key)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to sign JSONWebToken: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">req, err := newRequest(http.MethodPost, fmt.Sprintf("%s/app/installations/%s/access_tokens", c.endpoint, installationID), nil, signedJWToken)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to create request: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">res, err := c.httpClient.Do(req)
+        if err != nil </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("failed to send request: %w", err)
+        }</span>
+        <span class="cov8" title="1">defer res.Body.Close()
+
+        if res.StatusCode != http.StatusCreated </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("request returned non-201 status: %s", res.Status)
+        }</span>
+
+        <span class="cov8" title="1">var tokenResp TokenResponse
+        if err := json.NewDecoder(res.Body).Decode(&amp;tokenResp); err != nil </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("failed to decode response: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return tokenResp.Token, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package client
+
+import (
+        "fmt"
+        "io"
+        "net/http"
+)
+
+func newRequest(method string, url string, body io.Reader, token string) (*http.Request, error) <span class="cov8" title="1">{
+        req, err := http.NewRequest(method, url, body)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">req.Header.Set("Accept", "application/vnd.github+json")
+        req.Header.Set("X-GitHub-Api-Version", "2026-03-10")
+        if token != "" </span><span class="cov8" title="1">{
+                req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+        }</span>
+        <span class="cov8" title="1">return req, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package version
 
 import (
         "runtime"

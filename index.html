@@ -131,6 +131,7 @@ func main() <span class="cov0" title="0">{
 		<pre class="file" id="file2" style="display: none">package token
 
 import (
+        "fmt"
         "os"
 
         "github.com/heathcliff26/gh-utility/pkg/client"
@@ -190,7 +191,7 @@ func run(cmd *cobra.Command) error <span class="cov8" title="1">{
                 return err
         }</span>
 
-        <span class="cov0" title="0">cmd.Println(token)
+        <span class="cov0" title="0">fmt.Println(token)
 
         return nil</span>
 }

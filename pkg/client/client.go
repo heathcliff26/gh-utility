@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -35,7 +36,11 @@ func (c *client) GetToken(keyPath string, clientID string, installationID string
 	if err != nil {
 		return "", fmt.Errorf("failed to read keyfile: %w", err)
 	}
-	key, err := jwt.ParseRSAPrivateKeyFromPEM(bytes)
+
+	// Need to replace literal `\n` with actual newlines.
+	// Otherwise it is harder to use this in environments where the key might be passed as a single line string.
+	keyStr := strings.ReplaceAll(string(bytes), `\n`, "\n")
+	key, err := jwt.ParseRSAPrivateKeyFromPEM([]byte(keyStr))
 	if err != nil {
 		return "", fmt.Errorf("failed to parse keyfile: %w", err)
 	}

@@ -4,3 +4,6 @@
 # Generated go-test coverage reports
 coverprofiles/
 coverprofile.out
+
+# Ignore private keys
+/*.pem

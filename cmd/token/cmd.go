@@ -1,6 +1,7 @@
 package token
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/heathcliff26/gh-utility/pkg/client"
@@ -60,7 +61,7 @@ func run(cmd *cobra.Command) error {
 		return err
 	}
 
-	cmd.Println(token)
+	fmt.Println(token)
 
 	return nil
 }

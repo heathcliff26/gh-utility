@@ -36,11 +36,13 @@ LABEL   org.opencontainers.image.authors="heathcliff@heathcliff.eu" \
         org.opencontainers.image.licenses="Apache-2.0" \
         org.opencontainers.image.title="gh-utility"
 
-WORKDIR /
-
-RUN apk add --no-cache github-cli
+RUN apk add --no-cache github-cli && adduser -D github
 
 COPY --from=build-stage /app/bin/gh-utility /usr/local/bin/gh-utility
+
+WORKDIR /home/github
+
+USER github:github
 
 #
 # END final-stage

@@ -17,7 +17,7 @@ func NewRoot() *cobra.Command {
 
 	rootCmd := &cobra.Command{
 		Use:   Name,
-		Short: Name + " interact with the GitHub API as an app",
+		Short: Name + " to interact with the GitHub API as an app",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cmd.Help()
 		},

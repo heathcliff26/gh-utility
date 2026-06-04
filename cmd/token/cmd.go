@@ -1,7 +1,6 @@
 package token
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/heathcliff26/gh-utility/pkg/client"
@@ -12,6 +11,8 @@ const (
 	appKeyPathFlag     = "key"
 	clientIDFlag       = "client"
 	installationIDFlag = "installation"
+	outputFlag         = "output"
+	endpointFlag       = "endpoint"
 )
 
 // Create a new token command
@@ -38,6 +39,11 @@ func NewCommand() *cobra.Command {
 	cmd.Flags().StringP(installationIDFlag, "i", "", "Installation ID of the app")
 	_ = cmd.MarkFlagRequired(installationIDFlag)
 
+	cmd.Flags().StringP(outputFlag, "o", "", "Write the token to disk instead of outputting on console")
+	_ = cmd.MarkFlagFilename(outputFlag)
+
+	cmd.Flags().String(endpointFlag, client.DefaultEndpoint, "GitHub API endpoint")
+
 	return cmd
 }
 
@@ -54,14 +60,25 @@ func run(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
+	output, err := cmd.Flags().GetString(outputFlag)
+	if err != nil {
+		return err
+	}
+	endpoint, err := cmd.Flags().GetString(endpointFlag)
+	if err != nil {
+		return err
+	}
 
-	c := client.NewClient()
+	c := client.NewClient(endpoint)
 	token, err := c.GetToken(keyPath, clientID, installationID)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(token)
-
+	if output == "" {
+		cmd.Println(token)
+	} else {
+		return os.WriteFile(output, []byte(token), 0666)
+	}
 	return nil
 }

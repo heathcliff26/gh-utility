@@ -11,7 +11,11 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-const defaultEndpoint = "https://api.github.com"
+const (
+	DefaultEndpoint = "https://api.github.com"
+
+	defaultClientTimeout = 2 * time.Second
+)
 
 type client struct {
 	httpClient *http.Client
@@ -19,13 +23,14 @@ type client struct {
 }
 
 // Create a new client
-func NewClient() *client {
-	httpClient := http.DefaultClient
-	httpClient.Timeout = 10 * time.Second
+func NewClient(endpoint string) *client {
+	httpClient := &http.Client{
+		Timeout: defaultClientTimeout,
+	}
 
 	return &client{
 		httpClient: httpClient,
-		endpoint:   defaultEndpoint,
+		endpoint:   endpoint,
 	}
 }
 

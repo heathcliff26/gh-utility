@@ -1,34 +1,29 @@
 package client
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"testing"
 
+	"github.com/heathcliff26/gh-utility/testutils"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestNewClient(t *testing.T) {
 	assert := assert.New(t)
 
-	client := NewClient()
+	client := NewClient(DefaultEndpoint)
 	assert.NotNil(client)
-	assert.Equal(defaultEndpoint, client.endpoint)
+	assert.Equal(DefaultEndpoint, client.endpoint)
 	assert.NotNil(client.httpClient)
+	assert.Equal(defaultClientTimeout, client.httpClient.Timeout)
 }
 
 func TestGetToken(t *testing.T) {
 	t.Run("MissingKey", func(t *testing.T) {
 		assert := assert.New(t)
 
-		client := NewClient()
+		client := NewClient("http://localhost")
 		token, err := client.GetToken("nothing", "abcdf", "12345")
 		assert.ErrorContains(err, "failed to read keyfile", "Should return error")
 		assert.Empty(token)
@@ -36,7 +31,7 @@ func TestGetToken(t *testing.T) {
 	t.Run("MalformedKey", func(t *testing.T) {
 		assert := assert.New(t)
 
-		client := NewClient()
+		client := NewClient("http://localhost")
 		token, err := client.GetToken("testdata/fake-key.txt", "abcdf", "12345")
 		assert.ErrorContains(err, "failed to parse keyfile", "Should return error")
 		assert.Empty(token)
@@ -44,10 +39,9 @@ func TestGetToken(t *testing.T) {
 	t.Run("FailedRequest", func(t *testing.T) {
 		assert := assert.New(t)
 
-		client := NewClient()
-		client.endpoint = "localhost:6666"
+		client := NewClient("http://localhost:6666")
 
-		privateKey := generateRSAKey(t)
+		privateKey := testutils.GenerateRSAKey(t)
 
 		token, err := client.GetToken(privateKey, "abcdf", "12345")
 		assert.ErrorContains(err, "failed to send request", "Should return error")
@@ -61,10 +55,9 @@ func TestGetToken(t *testing.T) {
 		}))
 		defer s.Close()
 
-		client := NewClient()
-		client.endpoint = s.URL
+		client := NewClient(s.URL)
 
-		privateKey := generateRSAKey(t)
+		privateKey := testutils.GenerateRSAKey(t)
 
 		token, err := client.GetToken(privateKey, "abcdf", "12345")
 		assert.ErrorContains(err, "request returned non-201 status", "Should return error")
@@ -79,10 +72,9 @@ func TestGetToken(t *testing.T) {
 		}))
 		defer s.Close()
 
-		client := NewClient()
-		client.endpoint = s.URL
+		client := NewClient(s.URL)
 
-		privateKey := generateRSAKey(t)
+		privateKey := testutils.GenerateRSAKey(t)
 
 		token, err := client.GetToken(privateKey, "abcdf", "12345")
 		assert.ErrorContains(err, "failed to decode response", "Should return error")
@@ -101,33 +93,12 @@ func TestGetToken(t *testing.T) {
 		}))
 		defer s.Close()
 
-		client := NewClient()
-		client.endpoint = s.URL
+		client := NewClient(s.URL)
 
-		privateKey := generateRSAKey(t)
+		privateKey := testutils.GenerateRSAKey(t)
 
 		token, err := client.GetToken(privateKey, "abcdf", "12345")
 		assert.NoError(err, "Should succeed")
 		assert.Equal("abc", token, "Should return token")
 	})
-}
-
-func generateRSAKey(t *testing.T) string {
-	require := require.New(t)
-
-	key, err := rsa.GenerateKey(rand.Reader, 2048)
-	require.NoError(err, "Should generate RSA key")
-
-	pemdata := pem.EncodeToMemory(
-		&pem.Block{
-			Type:  "RSA PRIVATE KEY",
-			Bytes: x509.MarshalPKCS1PrivateKey(key),
-		},
-	)
-
-	path := filepath.Join(t.TempDir(), "private-key.pem")
-	err = os.WriteFile(path, pemdata, 0600)
-	require.NoError(err, "Should write RSA key")
-
-	return path
 }

@@ -13,11 +13,39 @@ CLI tool to interact with the GitHub API as an app.
 - [gh-utility](#gh-utility)
   - [Table of Contents](#table-of-contents)
   - [Usage](#usage)
+    - [Tekton tasks](#tekton-tasks)
   - [Container Images](#container-images)
     - [Image location](#image-location)
     - [Tags](#tags)
 
 ## Usage
+
+Example usage with container:
+```bash
+podman run -it ghcr.io/heathcliff26/gh-utility:latest --help
+```
+Output of help:
+```bash
+$ gh-utility help
+gh-utility to interact with the GitHub API as an app
+
+Usage:
+  gh-utility [flags]
+  gh-utility [command]
+
+Available Commands:
+  completion  Generate the autocompletion script for the specified shell
+  help        Help about any command
+  token       Create a new temporary access token for the app
+  version     Print version information and exit
+
+Flags:
+  -h, --help   help for gh-utility
+
+Use "gh-utility [command] --help" for more information about a command.
+```
+
+### Tekton tasks
 
 TODO
 

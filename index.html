@@ -59,9 +59,9 @@
 				
 				<option value="file1">github.com/heathcliff26/gh-utility/cmd/main.go (0.0%)</option>
 				
-				<option value="file2">github.com/heathcliff26/gh-utility/cmd/token/cmd.go (67.9%)</option>
+				<option value="file2">github.com/heathcliff26/gh-utility/cmd/token/cmd.go (76.9%)</option>
 				
-				<option value="file3">github.com/heathcliff26/gh-utility/pkg/client/client.go (92.9%)</option>
+				<option value="file3">github.com/heathcliff26/gh-utility/pkg/client/client.go (92.6%)</option>
 				
 				<option value="file4">github.com/heathcliff26/gh-utility/pkg/client/utils.go (87.5%)</option>
 				
@@ -98,7 +98,7 @@ func NewRoot() *cobra.Command <span class="cov8" title="1">{
 
         <span class="cov8" title="1">rootCmd := &amp;cobra.Command{
                 Use:   Name,
-                Short: Name + " interact with the GitHub API as an app",
+                Short: Name + " to interact with the GitHub API as an app",
                 RunE: func(cmd *cobra.Command, _ []string) error </span><span class="cov0" title="0">{
                         return cmd.Help()
                 }</span>,
@@ -131,7 +131,6 @@ func main() <span class="cov0" title="0">{
 		<pre class="file" id="file2" style="display: none">package token
 
 import (
-        "fmt"
         "os"
 
         "github.com/heathcliff26/gh-utility/pkg/client"
@@ -142,6 +141,8 @@ const (
         appKeyPathFlag     = "key"
         clientIDFlag       = "client"
         installationIDFlag = "installation"
+        outputFlag         = "output"
+        endpointFlag       = "endpoint"
 )
 
 // Create a new token command
@@ -168,6 +169,11 @@ func NewCommand() *cobra.Command <span class="cov8" title="1">{
         cmd.Flags().StringP(installationIDFlag, "i", "", "Installation ID of the app")
         _ = cmd.MarkFlagRequired(installationIDFlag)
 
+        cmd.Flags().StringP(outputFlag, "o", "", "Write the token to disk instead of outputting on console")
+        _ = cmd.MarkFlagFilename(outputFlag)
+
+        cmd.Flags().String(endpointFlag, client.DefaultEndpoint, "GitHub API endpoint")
+
         return cmd</span>
 }
 
@@ -184,16 +190,27 @@ func run(cmd *cobra.Command) error <span class="cov8" title="1">{
         if err != nil </span><span class="cov0" title="0">{
                 return err
         }</span>
+        <span class="cov8" title="1">output, err := cmd.Flags().GetString(outputFlag)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">endpoint, err := cmd.Flags().GetString(endpointFlag)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
 
-        <span class="cov8" title="1">c := client.NewClient()
+        <span class="cov8" title="1">c := client.NewClient(endpoint)
         token, err := c.GetToken(keyPath, clientID, installationID)
         if err != nil </span><span class="cov8" title="1">{
                 return err
         }</span>
 
-        <span class="cov0" title="0">fmt.Println(token)
-
-        return nil</span>
+        <span class="cov8" title="1">if output == "" </span><span class="cov8" title="1">{
+                cmd.Println(token)
+        }</span> else<span class="cov8" title="1"> {
+                return os.WriteFile(output, []byte(token), 0666)
+        }</span>
+        <span class="cov8" title="1">return nil</span>
 }
 </pre>
 		
@@ -210,7 +227,11 @@ import (
         "github.com/golang-jwt/jwt/v5"
 )
 
-const defaultEndpoint = "https://api.github.com"
+const (
+        DefaultEndpoint = "https://api.github.com"
+
+        defaultClientTimeout = 2 * time.Second
+)
 
 type client struct {
         httpClient *http.Client
@@ -218,13 +239,14 @@ type client struct {
 }
 
 // Create a new client
-func NewClient() *client <span class="cov8" title="1">{
-        httpClient := http.DefaultClient
-        httpClient.Timeout = 10 * time.Second
+func NewClient(endpoint string) *client <span class="cov8" title="1">{
+        httpClient := &amp;http.Client{
+                Timeout: defaultClientTimeout,
+        }
 
         return &amp;client{
                 httpClient: httpClient,
-                endpoint:   defaultEndpoint,
+                endpoint:   endpoint,
         }
 }</span>
 

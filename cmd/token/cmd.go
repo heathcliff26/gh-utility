@@ -9,8 +9,8 @@ import (
 
 const (
 	appKeyPathFlag     = "key"
-	clientIDFlag       = "client"
-	installationIDFlag = "installation"
+	clientIDFlag       = "client-id"
+	installationIDFlag = "installation-id"
 	outputFlag         = "output"
 	endpointFlag       = "endpoint"
 )

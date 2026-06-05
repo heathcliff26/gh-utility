@@ -2,7 +2,6 @@
 [![Coverage Status](https://coveralls.io/repos/github/heathcliff26/gh-utility/badge.svg)](https://coveralls.io/github/heathcliff26/gh-utility)
 [![Editorconfig Check](https://github.com/heathcliff26/gh-utility/actions/workflows/editorconfig-check.yaml/badge.svg?event=push)](https://github.com/heathcliff26/gh-utility/actions/workflows/editorconfig-check.yaml)
 [![Coverage report](https://github.com/heathcliff26/gh-utility/actions/workflows/go-testcover-report.yaml/badge.svg)](https://github.com/heathcliff26/gh-utility/actions/workflows/go-testcover-report.yaml)
-[![Renovate](https://github.com/heathcliff26/gh-utility/actions/workflows/renovate.yaml/badge.svg)](https://github.com/heathcliff26/gh-utility/actions/workflows/renovate.yaml)
 
 # gh-utility
 

@@ -8,8 +8,7 @@ ARG TARGETARCH
 
 WORKDIR /app
 
-# TODO
-#COPY vendor ./vendor
+COPY vendor ./vendor
 
 COPY go.mod go.sum ./
 

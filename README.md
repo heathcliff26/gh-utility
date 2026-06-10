@@ -46,7 +46,7 @@ Use "gh-utility [command] --help" for more information about a command.
 
 ### Tekton tasks
 
-TODO
+Examples for using this image inside tekton tasks can be found in the [ci repository](https://github.com/heathcliff26/ci/tree/main/tekton/pipelines/shared-tasks).
 
 ## Container Images
 

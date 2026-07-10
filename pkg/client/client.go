@@ -37,6 +37,7 @@ func NewClient(endpoint string) *client {
 // Get an installations token for the GitHub app
 // API endpoint: POST /app/installations/{installation_id}/access_tokens
 func (c *client) GetToken(keyPath string, clientID string, installationID string) (string, error) {
+	// #nosec G304 -- Filepath is decided by the user.
 	bytes, err := os.ReadFile(keyPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read keyfile: %w", err)

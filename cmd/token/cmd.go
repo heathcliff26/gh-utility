@@ -78,6 +78,7 @@ func run(cmd *cobra.Command) error {
 	if output == "" {
 		cmd.Println(token)
 	} else {
+		// #nosec G306 -- File should be readable by CI systems, final file permissions are decided by umask.
 		return os.WriteFile(output, []byte(token), 0666)
 	}
 	return nil

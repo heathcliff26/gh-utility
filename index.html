@@ -263,6 +263,7 @@ func run(cmd *cobra.Command) error <span class="cov8" title="1">{
         <span class="cov8" title="1">if output == "" </span><span class="cov8" title="1">{
                 cmd.Println(token)
         }</span> else<span class="cov8" title="1"> {
+                // #nosec G306 -- File should be readable by CI systems, final file permissions are decided by umask.
                 return os.WriteFile(output, []byte(token), 0666)
         }</span>
         <span class="cov8" title="1">return nil</span>
@@ -308,6 +309,7 @@ func NewClient(endpoint string) *client <span class="cov8" title="1">{
 // Get an installations token for the GitHub app
 // API endpoint: POST /app/installations/{installation_id}/access_tokens
 func (c *client) GetToken(keyPath string, clientID string, installationID string) (string, error) <span class="cov8" title="1">{
+        // #nosec G304 -- Filepath is decided by the user.
         bytes, err := os.ReadFile(keyPath)
         if err != nil </span><span class="cov8" title="1">{
                 return "", fmt.Errorf("failed to read keyfile: %w", err)

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/heathcliff26/gh-utility/cmd/clone"
 	"github.com/heathcliff26/gh-utility/cmd/token"
 	"github.com/heathcliff26/gh-utility/pkg/version"
 	"github.com/spf13/cobra"
@@ -26,6 +27,7 @@ func NewRoot() *cobra.Command {
 	rootCmd.AddCommand(
 		version.NewCommand(Name),
 		token.NewCommand(),
+		clone.NewCommand(),
 	)
 
 	return rootCmd

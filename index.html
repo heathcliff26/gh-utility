@@ -3,7 +3,7 @@
 <html>
 	<head>
 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-		<title>cmd: Go Coverage Report</title>
+		<title>clone: Go Coverage Report</title>
 		<style>
 			body {
 				background: black;
@@ -55,17 +55,21 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/heathcliff26/gh-utility/cmd/cmd.go (66.7%)</option>
+				<option value="file0">github.com/heathcliff26/gh-utility/cmd/clone/cmd.go (66.7%)</option>
 				
-				<option value="file1">github.com/heathcliff26/gh-utility/cmd/main.go (0.0%)</option>
+				<option value="file1">github.com/heathcliff26/gh-utility/cmd/cmd.go (66.7%)</option>
 				
-				<option value="file2">github.com/heathcliff26/gh-utility/cmd/token/cmd.go (76.9%)</option>
+				<option value="file2">github.com/heathcliff26/gh-utility/cmd/main.go (0.0%)</option>
 				
-				<option value="file3">github.com/heathcliff26/gh-utility/pkg/client/client.go (92.6%)</option>
+				<option value="file3">github.com/heathcliff26/gh-utility/cmd/token/cmd.go (76.9%)</option>
 				
-				<option value="file4">github.com/heathcliff26/gh-utility/pkg/client/utils.go (87.5%)</option>
+				<option value="file4">github.com/heathcliff26/gh-utility/pkg/client/client.go (92.6%)</option>
 				
-				<option value="file5">github.com/heathcliff26/gh-utility/pkg/version/version.go (90.0%)</option>
+				<option value="file5">github.com/heathcliff26/gh-utility/pkg/client/utils.go (87.5%)</option>
+				
+				<option value="file6">github.com/heathcliff26/gh-utility/pkg/git/git.go (100.0%)</option>
+				
+				<option value="file7">github.com/heathcliff26/gh-utility/pkg/version/version.go (90.0%)</option>
 				
 				</select>
 			</div>
@@ -79,9 +83,59 @@
 		</div>
 		<div id="content">
 		
-		<pre class="file" id="file0" style="display: none">package main
+		<pre class="file" id="file0" style="display: none">package clone
 
 import (
+        "os"
+
+        "github.com/heathcliff26/gh-utility/pkg/git"
+        "github.com/spf13/cobra"
+)
+
+const (
+        fetchDepthFlag = "depth"
+)
+
+// Create a new clone command
+func NewCommand() *cobra.Command <span class="cov8" title="1">{
+        cmd := &amp;cobra.Command{
+                Use:   "clone [flags] &lt;repository&gt; [&lt;directory&gt;]",
+                Short: "Clone a repository with a temporary installation token into the specified directory",
+                Args:  cobra.RangeArgs(1, 2),
+                Run: func(cmd *cobra.Command, args []string) </span><span class="cov0" title="0">{
+                        err := run(cmd, args)
+                        if err != nil </span><span class="cov0" title="0">{
+                                cmd.PrintErrln(cmd.ErrPrefix(), err)
+                                os.Exit(1)
+                        }</span>
+                },
+        }
+
+        <span class="cov8" title="1">cmd.Flags().IntP(fetchDepthFlag, "d", 0, "Fetch depth for the clone operation, defaults to 0 (everything)")
+
+        return cmd</span>
+}
+
+func run(cmd *cobra.Command, args []string) error <span class="cov8" title="1">{
+        fetchDepth, err := cmd.Flags().GetInt(fetchDepthFlag)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">url := args[0]
+        directory := ""
+        if len(args) == 2 </span><span class="cov8" title="1">{
+                directory = args[1]
+        }</span>
+
+        <span class="cov8" title="1">return git.CloneRepository(url, directory, fetchDepth)</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package main
+
+import (
+        "github.com/heathcliff26/gh-utility/cmd/clone"
         "github.com/heathcliff26/gh-utility/cmd/token"
         "github.com/heathcliff26/gh-utility/pkg/version"
         "github.com/spf13/cobra"
@@ -107,13 +161,14 @@ func NewRoot() *cobra.Command <span class="cov8" title="1">{
         <span class="cov8" title="1">rootCmd.AddCommand(
                 version.NewCommand(Name),
                 token.NewCommand(),
+                clone.NewCommand(),
         )
 
         return rootCmd</span>
 }
 </pre>
 		
-		<pre class="file" id="file1" style="display: none">package main
+		<pre class="file" id="file2" style="display: none">package main
 
 import (
         "os"
@@ -128,7 +183,7 @@ func main() <span class="cov0" title="0">{
 }
 </pre>
 		
-		<pre class="file" id="file2" style="display: none">package token
+		<pre class="file" id="file3" style="display: none">package token
 
 import (
         "os"
@@ -214,7 +269,7 @@ func run(cmd *cobra.Command) error <span class="cov8" title="1">{
 }
 </pre>
 		
-		<pre class="file" id="file3" style="display: none">package client
+		<pre class="file" id="file4" style="display: none">package client
 
 import (
         "encoding/json"
@@ -301,7 +356,7 @@ func (c *client) GetToken(keyPath string, clientID string, installationID string
 }
 </pre>
 		
-		<pre class="file" id="file4" style="display: none">package client
+		<pre class="file" id="file5" style="display: none">package client
 
 import (
         "fmt"
@@ -323,7 +378,54 @@ func newRequest(method string, url string, body io.Reader, token string) (*http.
 }
 </pre>
 		
-		<pre class="file" id="file5" style="display: none">package version
+		<pre class="file" id="file6" style="display: none">package git
+
+import (
+        "os"
+        "strings"
+
+        "github.com/go-git/go-git/v5"
+        "github.com/go-git/go-git/v5/plumbing/transport/http"
+)
+
+func CloneRepository(repoURL string, directory string, fetchDepth int) error <span class="cov8" title="1">{
+        opt := newCloneOptions(repoURL, fetchDepth)
+
+        if directory == "" </span><span class="cov8" title="1">{
+                directory = extractRepositoryName(repoURL)
+        }</span>
+
+        <span class="cov8" title="1">_, err := git.PlainClone(directory, false, opt)
+        return err</span>
+}
+
+func newCloneOptions(repoURL string, fetchDepth int) *git.CloneOptions <span class="cov8" title="1">{
+        opt := &amp;git.CloneOptions{
+                URL:   repoURL,
+                Depth: fetchDepth,
+        }
+
+        token := os.Getenv("GITHUB_TOKEN")
+        if token != "" </span><span class="cov8" title="1">{
+                opt.Auth = &amp;http.BasicAuth{
+                        Username: "x-access-token",
+                        Password: token,
+                }
+        }</span>
+
+        <span class="cov8" title="1">return opt</span>
+}
+
+func extractRepositoryName(repoURL string) string <span class="cov8" title="1">{
+        s := strings.Split(repoURL, ":")
+        s = strings.Split(s[len(s)-1], "/")
+        name := s[len(s)-1]
+        name = strings.TrimSuffix(name, ".git")
+        return name
+}</span>
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package version
 
 import (
         "runtime"

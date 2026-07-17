@@ -59,17 +59,25 @@
 				
 				<option value="file1">github.com/heathcliff26/gh-utility/cmd/cmd.go (66.7%)</option>
 				
-				<option value="file2">github.com/heathcliff26/gh-utility/cmd/main.go (0.0%)</option>
+				<option value="file2">github.com/heathcliff26/gh-utility/cmd/commit/cmd.go (73.3%)</option>
 				
-				<option value="file3">github.com/heathcliff26/gh-utility/cmd/token/cmd.go (76.9%)</option>
+				<option value="file3">github.com/heathcliff26/gh-utility/cmd/main.go (0.0%)</option>
 				
-				<option value="file4">github.com/heathcliff26/gh-utility/pkg/client/client.go (92.6%)</option>
+				<option value="file4">github.com/heathcliff26/gh-utility/cmd/token/cmd.go (76.9%)</option>
 				
-				<option value="file5">github.com/heathcliff26/gh-utility/pkg/client/utils.go (87.5%)</option>
+				<option value="file5">github.com/heathcliff26/gh-utility/pkg/client/client.go (89.4%)</option>
 				
-				<option value="file6">github.com/heathcliff26/gh-utility/pkg/git/git.go (100.0%)</option>
+				<option value="file6">github.com/heathcliff26/gh-utility/pkg/client/types.go (100.0%)</option>
 				
-				<option value="file7">github.com/heathcliff26/gh-utility/pkg/version/version.go (90.0%)</option>
+				<option value="file7">github.com/heathcliff26/gh-utility/pkg/client/utils.go (78.8%)</option>
+				
+				<option value="file8">github.com/heathcliff26/gh-utility/pkg/git/git.go (92.3%)</option>
+				
+				<option value="file9">github.com/heathcliff26/gh-utility/pkg/pullrequest/pr.go (0.0%)</option>
+				
+				<option value="file10">github.com/heathcliff26/gh-utility/pkg/utils/utils.go (100.0%)</option>
+				
+				<option value="file11">github.com/heathcliff26/gh-utility/pkg/version/version.go (90.0%)</option>
 				
 				</select>
 			</div>
@@ -136,6 +144,7 @@ func run(cmd *cobra.Command, args []string) error <span class="cov8" title="1">{
 
 import (
         "github.com/heathcliff26/gh-utility/cmd/clone"
+        "github.com/heathcliff26/gh-utility/cmd/commit"
         "github.com/heathcliff26/gh-utility/cmd/token"
         "github.com/heathcliff26/gh-utility/pkg/version"
         "github.com/spf13/cobra"
@@ -162,13 +171,90 @@ func NewRoot() *cobra.Command <span class="cov8" title="1">{
                 version.NewCommand(Name),
                 token.NewCommand(),
                 clone.NewCommand(),
+                commit.NewCommand(),
         )
 
         return rootCmd</span>
 }
 </pre>
 		
-		<pre class="file" id="file2" style="display: none">package main
+		<pre class="file" id="file2" style="display: none">package commit
+
+import (
+        "os"
+
+        "github.com/heathcliff26/gh-utility/pkg/client"
+        "github.com/heathcliff26/gh-utility/pkg/pullrequest"
+        "github.com/heathcliff26/gh-utility/pkg/utils"
+        "github.com/spf13/cobra"
+)
+
+const (
+        repositoryFlag = "repository"
+        branchFlag     = "branch"
+        messageFlag    = "message"
+        endpointFlag   = "endpoint"
+)
+
+// Create a new clone command
+func NewCommand() *cobra.Command <span class="cov8" title="1">{
+        cmd := &amp;cobra.Command{
+                Use:   "commit",
+                Short: "Push a new commit to the given branch using force push",
+                Run: func(cmd *cobra.Command, _ []string) </span><span class="cov0" title="0">{
+                        err := run(cmd)
+                        if err != nil </span><span class="cov0" title="0">{
+                                cmd.PrintErrln(cmd.ErrPrefix(), err)
+                                os.Exit(1)
+                        }</span>
+                },
+        }
+
+        <span class="cov8" title="1">cmd.Flags().StringP(repositoryFlag, "r", ".", "Path to the git repository")
+
+        cmd.Flags().StringP(branchFlag, "b", "", "Branch to push to, will be created if it does not exist")
+        _ = cmd.MarkFlagRequired(branchFlag)
+
+        cmd.Flags().StringP(messageFlag, "m", "", "Commit message")
+        _ = cmd.MarkFlagRequired(messageFlag)
+
+        cmd.Flags().String(endpointFlag, client.DefaultEndpoint, "GitHub API endpoint")
+
+        return cmd</span>
+}
+
+func run(cmd *cobra.Command) error <span class="cov8" title="1">{
+        path, err := cmd.Flags().GetString(repositoryFlag)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">branch, err := cmd.Flags().GetString(branchFlag)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">msg, err := cmd.Flags().GetString(messageFlag)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">endpoint, err := cmd.Flags().GetString(endpointFlag)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">c := client.NewClient(endpoint)
+
+        tree, commit, err := pullrequest.Commit(c, path, msg, branch, utils.GetToken())
+        if tree == "" &amp;&amp; commit == "" &amp;&amp; err == nil </span><span class="cov8" title="1">{
+                cmd.Println("No changes detected, exiting")
+        }</span> else<span class="cov8" title="1"> {
+                cmd.Printf("Tree: %s\nCommit: %s\n", tree, commit)
+        }</span>
+        <span class="cov8" title="1">return err</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package main
 
 import (
         "os"
@@ -183,7 +269,7 @@ func main() <span class="cov0" title="0">{
 }
 </pre>
 		
-		<pre class="file" id="file3" style="display: none">package token
+		<pre class="file" id="file4" style="display: none">package token
 
 import (
         "os"
@@ -270,11 +356,12 @@ func run(cmd *cobra.Command) error <span class="cov8" title="1">{
 }
 </pre>
 		
-		<pre class="file" id="file4" style="display: none">package client
+		<pre class="file" id="file5" style="display: none">package client
 
 import (
         "encoding/json"
         "fmt"
+        "io"
         "net/http"
         "os"
         "strings"
@@ -289,18 +376,18 @@ const (
         defaultClientTimeout = 10 * time.Second
 )
 
-type client struct {
+type Client struct {
         httpClient *http.Client
         endpoint   string
 }
 
 // Create a new client
-func NewClient(endpoint string) *client <span class="cov8" title="1">{
+func NewClient(endpoint string) *Client <span class="cov8" title="1">{
         httpClient := &amp;http.Client{
                 Timeout: defaultClientTimeout,
         }
 
-        return &amp;client{
+        return &amp;Client{
                 httpClient: httpClient,
                 endpoint:   endpoint,
         }
@@ -308,7 +395,7 @@ func NewClient(endpoint string) *client <span class="cov8" title="1">{
 
 // Get an installations token for the GitHub app
 // API endpoint: POST /app/installations/{installation_id}/access_tokens
-func (c *client) GetToken(keyPath string, clientID string, installationID string) (string, error) <span class="cov8" title="1">{
+func (c *Client) GetToken(keyPath string, clientID string, installationID string) (string, error) <span class="cov8" title="1">{
         // #nosec G304 -- Filepath is decided by the user.
         bytes, err := os.ReadFile(keyPath)
         if err != nil </span><span class="cov8" title="1">{
@@ -339,57 +426,374 @@ func (c *client) GetToken(keyPath string, clientID string, installationID string
                 return "", fmt.Errorf("failed to create request: %w", err)
         }</span>
 
-        <span class="cov8" title="1">res, err := c.httpClient.Do(req)
+        <span class="cov8" title="1">var tokenResp TokenResponse
+        err = c.do(req, http.StatusCreated, &amp;tokenResp)
         if err != nil </span><span class="cov8" title="1">{
-                return "", fmt.Errorf("failed to send request: %w", err)
+                return "", err
+        }</span>
+        <span class="cov8" title="1">return tokenResp.Token, nil</span>
+}
+
+// Create a new Git tree object with the give files.
+// API endpoint: POST /repos/{owner}/{repo}/git/trees
+// Parameters:
+// - token: The GitHub app installation token
+// - repo: The repository name in the format "owner/repo".
+// - files: A list of file paths
+// - baseTree: The SHA of the base tree to create the new tree from.
+// Returns:
+// - The SHA of the created tree object
+// - An error if any occurred
+func (c *Client) CreateTree(token string, repo string, files []string, baseTree string) (string, error) <span class="cov8" title="1">{
+        objects := make([]*TreeObject, len(files))
+        for i, file := range files </span><span class="cov8" title="1">{
+                obj, err := fileToTreeObject(file)
+                if err != nil </span><span class="cov0" title="0">{
+                        return "", fmt.Errorf("failed to create tree object for file '%s': %w", file, err)
+                }</span>
+                <span class="cov8" title="1">objects[i] = obj</span>
+        }
+
+        <span class="cov8" title="1">treeReq := &amp;TreeRequest{
+                Tree:     objects,
+                BaseTree: baseTree,
+        }
+
+        req, err := newRequest(http.MethodPost, fmt.Sprintf("%s/repos/%s/git/trees", c.endpoint, repo), treeReq, token)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to create request: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">var res TreeResponse
+        err = c.do(req, http.StatusCreated, &amp;res)
+        if err != nil </span><span class="cov8" title="1">{
+                return "", err
+        }</span>
+        <span class="cov8" title="1">return res.SHA, nil</span>
+}
+
+// Create a new Git commit object
+// API endpoint: POST /repos/{owner}/{repo}/git/commits
+// Parameters:
+// - token: The GitHub app installation token
+// - repo: The repository name in the format "owner/repo".
+// - msg: Commit message
+// - tree: The SHA of the tree the commit references
+// - parents: List of parent commit SHA
+// Returns:
+// - The SHA of the created commit
+// - An error if any occurred
+func (c *Client) CreateCommit(token string, repo string, msg string, tree string, parents []string) (string, error) <span class="cov8" title="1">{
+        commit := &amp;CommitRequest{
+                Message: msg,
+                Tree:    tree,
+                Parents: parents,
+        }
+
+        req, err := newRequest(http.MethodPost, fmt.Sprintf("%s/repos/%s/git/commits", c.endpoint, repo), commit, token)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to create request: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">var res CommitResponse
+        err = c.do(req, http.StatusCreated, &amp;res)
+        if err != nil </span><span class="cov8" title="1">{
+                return "", err
+        }</span>
+        <span class="cov8" title="1">return res.SHA, nil</span>
+}
+
+// Check if the given branch exists
+// API endpoint: POST /repos/{owner}/{repo}/git/refs/{ref}
+// Parameters:
+// - token: The GitHub app installation token
+// - repo: The repository name in the format "owner/repo".
+// - name: Name of the branch
+// Returns:
+// - If the branch exists
+// - An error if any occurred
+func (c *Client) ExistsBranch(token string, repo string, name string) (bool, error) <span class="cov8" title="1">{
+        req, err := newRequest(http.MethodGet, fmt.Sprintf("%s/repos/%s/git/refs/heads/%s", c.endpoint, repo, name), nil, token)
+        if err != nil </span><span class="cov0" title="0">{
+                return false, fmt.Errorf("failed to create request: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">res, err := c.httpClient.Do(req)
+        if err != nil </span><span class="cov0" title="0">{
+                return false, fmt.Errorf("failed to send request: %w", err)
         }</span>
         <span class="cov8" title="1">defer res.Body.Close()
 
-        if res.StatusCode != http.StatusCreated </span><span class="cov8" title="1">{
-                return "", fmt.Errorf("request returned non-201 status: %s", res.Status)
+        switch res.StatusCode </span>{
+        case http.StatusOK:<span class="cov8" title="1">
+                return true, nil</span>
+        case http.StatusNotFound:<span class="cov8" title="1">
+                return false, nil</span>
+        }
+        <span class="cov8" title="1">return false, fmt.Errorf("received unexpected response code: %d", res.StatusCode)</span>
+}
+
+// Create a new branch at the given commit
+// API endpoint: POST /repos/{owner}/{repo}/git/refs
+// Parameters:
+// - token: The GitHub app installation token
+// - repo: The repository name in the format "owner/repo".
+// - name: Name of the branch
+// - commit: SHA of the commit
+// Returns:
+// - An error if any occurred
+func (c *Client) CreateBranch(token string, repo string, name string, commit string) error <span class="cov8" title="1">{
+        branch := &amp;BranchRequest{
+                Ref: "refs/heads/" + name,
+                SHA: commit,
+        }
+
+        req, err := newRequest(http.MethodPost, fmt.Sprintf("%s/repos/%s/git/refs", c.endpoint, repo), branch, token)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create request: %w", err)
         }</span>
 
-        <span class="cov8" title="1">var tokenResp TokenResponse
-        if err := json.NewDecoder(res.Body).Decode(&amp;tokenResp); err != nil </span><span class="cov8" title="1">{
-                return "", fmt.Errorf("failed to decode response: %w", err)
+        <span class="cov8" title="1">err = c.do(req, http.StatusCreated, nil)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to create branch: %w", err)
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+// Update the branch to the given commit. Will force push
+// API endpoint: POST /repos/{owner}/{repo}/git/refs/{ref}
+// Parameters:
+// - token: The GitHub app installation token
+// - repo: The repository name in the format "owner/repo".
+// - name: Name of the branch
+// - commit: SHA of the commit
+// Returns:
+// - An error if any occurred
+func (c *Client) UpdateBranch(token string, repo string, name string, commit string) error <span class="cov8" title="1">{
+        force := true
+        branch := &amp;BranchRequest{
+                SHA:   commit,
+                Force: &amp;force,
+        }
+
+        req, err := newRequest(http.MethodPatch, fmt.Sprintf("%s/repos/%s/git/refs/heads/%s", c.endpoint, repo, name), branch, token)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create request: %w", err)
         }</span>
 
-        <span class="cov8" title="1">return tokenResp.Token, nil</span>
+        <span class="cov8" title="1">err = c.do(req, http.StatusOK, nil)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to update branch: %w", err)
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+// Check if the branch exists and call Create or Update afterwards.
+func (c *Client) CreateOrUpdateBranch(token string, repo string, name string, commit string) error <span class="cov8" title="1">{
+        exists, err := c.ExistsBranch(token, repo, name)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to check if branch exists: %w", err)
+        }</span>
+        <span class="cov8" title="1">if exists </span><span class="cov8" title="1">{
+                return c.UpdateBranch(token, repo, name, commit)
+        }</span> else<span class="cov8" title="1"> {
+                return c.CreateBranch(token, repo, name, commit)
+        }</span>
+}
+
+// Send the given http request and parse the returned result
+func (c *Client) do(req *http.Request, status int, v any) error <span class="cov8" title="1">{
+        // #nosec G704 -- Endpoint should be user controlled, actual Paths are hardcoded
+        res, err := c.httpClient.Do(req)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to send request: %w", err)
+        }</span>
+        <span class="cov8" title="1">defer res.Body.Close()
+
+        body, err := io.ReadAll(res.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to read response body: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">if res.StatusCode != status </span><span class="cov8" title="1">{
+                return fmt.Errorf("request returned %d, expected %d: %s", res.StatusCode, status, string(body))
+        }</span>
+        <span class="cov8" title="1">if v != nil </span><span class="cov8" title="1">{
+                err = json.Unmarshal(body, v)
+                if err != nil </span><span class="cov8" title="1">{
+                        return fmt.Errorf("failed to decode response: %w", err)
+                }</span>
+        }
+        <span class="cov8" title="1">return nil</span>
 }
 </pre>
 		
-		<pre class="file" id="file5" style="display: none">package client
+		<pre class="file" id="file6" style="display: none">package client
+
+import "encoding/json"
+
+const (
+        treeModeFile = "100644"
+        treeModeExec = "100755"
+
+        treeTypeBlob = "blob"
+)
+
+type TokenResponse struct {
+        Token     string `json:"token"`
+        ExpiresAt string `json:"expires_at"`
+}
+
+type TreeObject struct {
+        Path    string `json:"path"`
+        Mode    string `json:"mode,omitempty"`
+        Type    string `json:"type"`
+        Content string `json:"content"`
+}
+
+func (t *TreeObject) MarshalJSON() ([]byte, error) <span class="cov8" title="1">{
+        var res any
+        if t.Content == "" </span><span class="cov8" title="1">{
+                tmp := &amp;treeObjectWithSHA{
+                        Path: t.Path,
+                        Mode: t.Mode,
+                        Type: t.Type,
+                }
+                res = tmp
+        }</span> else<span class="cov8" title="1"> {
+                tmp := &amp;treeObjectWithoutSHA{
+                        Path:    t.Path,
+                        Mode:    t.Mode,
+                        Type:    t.Type,
+                        Content: t.Content,
+                }
+                res = tmp
+        }</span>
+        <span class="cov8" title="1">return json.Marshal(res)</span>
+}
+
+type treeObjectWithSHA struct {
+        Path string  `json:"path"`
+        Mode string  `json:"mode"`
+        Type string  `json:"type"`
+        SHA  *string `json:"sha"`
+}
+
+type treeObjectWithoutSHA struct {
+        Path    string `json:"path"`
+        Mode    string `json:"mode"`
+        Type    string `json:"type"`
+        Content string `json:"content"`
+}
+
+type TreeRequest struct {
+        Tree     []*TreeObject `json:"tree"`
+        BaseTree string        `json:"base_tree,omitempty"`
+}
+
+type TreeResponse struct {
+        SHA string `json:"sha"`
+}
+
+type CommitRequest struct {
+        Message string   `json:"message"`
+        Tree    string   `json:"tree"`
+        Parents []string `json:"parents,omitempty"`
+}
+
+type CommitResponse struct {
+        SHA string `json:"sha"`
+}
+
+type BranchRequest struct {
+        Ref   string `json:"ref,omitempty"`
+        SHA   string `json:"sha"`
+        Force *bool  `json:"force,omitempty"`
+}
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package client
 
 import (
+        "bytes"
+        "encoding/json"
+        "errors"
         "fmt"
         "io"
         "net/http"
+        "os"
 )
 
-func newRequest(method string, url string, body io.Reader, token string) (*http.Request, error) <span class="cov8" title="1">{
-        req, err := http.NewRequest(method, url, body)
-        if err != nil </span><span class="cov0" title="0">{
-                return nil, err
+func newRequest(method string, url string, body any, token string) (req *http.Request, err error) <span class="cov8" title="1">{
+        if body != nil </span><span class="cov8" title="1">{
+                var buf []byte
+                buf, err = json.Marshal(body)
+                if err != nil </span><span class="cov0" title="0">{
+                        err = fmt.Errorf("failed to encode request body: %w", err)
+                        return
+                }</span>
+                <span class="cov8" title="1">req, err = http.NewRequest(method, url, bytes.NewBuffer(buf))</span>
+        } else<span class="cov8" title="1"> {
+                req, err = http.NewRequest(method, url, nil)
+        }</span>
+        <span class="cov8" title="1">if err != nil </span><span class="cov0" title="0">{
+                err = fmt.Errorf("failed to create request: %w", err)
+                return
         }</span>
         <span class="cov8" title="1">req.Header.Set("Accept", "application/vnd.github+json")
         req.Header.Set("X-GitHub-Api-Version", "2026-03-10")
         if token != "" </span><span class="cov8" title="1">{
                 req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
         }</span>
-        <span class="cov8" title="1">return req, nil</span>
+        <span class="cov8" title="1">return</span>
+}
+
+func fileToTreeObject(path string) (*TreeObject, error) <span class="cov8" title="1">{
+        obj := &amp;TreeObject{
+                Path: path,
+                Type: treeTypeBlob,
+                Mode: treeModeFile,
+        }
+        // #nosec G302 G304 -- File permissions and path are wanted this way
+        f, err := os.OpenFile(path, os.O_RDONLY, 0644)
+        if errors.Is(err, os.ErrNotExist) </span><span class="cov8" title="1">{
+                return obj, nil
+        }</span> else<span class="cov8" title="1"> if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to open file `%s`: %w", path, err)
+        }</span>
+        <span class="cov8" title="1">defer f.Close()
+
+        stat, err := f.Stat()
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get mode of file `%s`: %w", path, err)
+        }</span>
+        <span class="cov8" title="1">if stat.Mode().Perm()&amp;0001 == 1 </span><span class="cov8" title="1">{
+                obj.Mode = treeModeExec
+        }</span>
+
+        <span class="cov8" title="1">buf, err := io.ReadAll(f)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to read file `%s`: %w", path, err)
+        }</span>
+        <span class="cov8" title="1">obj.Content = string(buf)
+
+        return obj, nil</span>
 }
 </pre>
 		
-		<pre class="file" id="file6" style="display: none">package git
+		<pre class="file" id="file8" style="display: none">package git
 
 import (
-        "os"
+        "fmt"
         "strings"
 
         "github.com/go-git/go-git/v5"
         "github.com/go-git/go-git/v5/plumbing/transport/http"
+        "github.com/heathcliff26/gh-utility/pkg/utils"
 )
 
+// Clone the given repository into the specified directory.
+// If the directory is empty, the repository name will be used as the directory name.
 func CloneRepository(repoURL string, directory string, fetchDepth int) error <span class="cov8" title="1">{
         opt := newCloneOptions(repoURL, fetchDepth)
 
@@ -407,7 +811,7 @@ func newCloneOptions(repoURL string, fetchDepth int) *git.CloneOptions <span cla
                 Depth: fetchDepth,
         }
 
-        token := os.Getenv("GITHUB_TOKEN")
+        token := utils.GetToken()
         if token != "" </span><span class="cov8" title="1">{
                 opt.Auth = &amp;http.BasicAuth{
                         Username: "x-access-token",
@@ -418,16 +822,168 @@ func newCloneOptions(repoURL string, fetchDepth int) *git.CloneOptions <span cla
         <span class="cov8" title="1">return opt</span>
 }
 
-func extractRepositoryName(repoURL string) string <span class="cov8" title="1">{
-        s := strings.Split(repoURL, ":")
-        s = strings.Split(s[len(s)-1], "/")
-        name := s[len(s)-1]
-        name = strings.TrimSuffix(name, ".git")
-        return name
+func extractRepositoryName(url string) string <span class="cov8" title="1">{
+        url = extractRepositoryOwnerAndName(url)
+        s := strings.Split(url, "/")
+        return s[len(s)-1]
 }</span>
+
+func extractRepositoryOwnerAndName(url string) string <span class="cov8" title="1">{
+        s := strings.Split(url, ":")
+        s = strings.Split(s[len(s)-1], "/")
+        if len(s) == 1 </span><span class="cov8" title="1">{
+                url = s[0]
+        }</span> else<span class="cov8" title="1"> {
+                url = s[len(s)-2] + "/" + s[len(s)-1]
+        }</span>
+        <span class="cov8" title="1">return strings.TrimSuffix(url, ".git")</span>
+}
+
+type Repository struct {
+        repo *git.Repository
+}
+
+func OpenRepository(path string) (*Repository, error) <span class="cov8" title="1">{
+        repo, err := git.PlainOpen(path)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to open repository: %w", err)
+        }</span>
+        <span class="cov8" title="1">return &amp;Repository{
+                repo: repo,
+        }, nil</span>
+}
+
+// Scan the current worktree and return all changed files.
+func (r *Repository) GetChangedFiles() ([]string, error) <span class="cov8" title="1">{
+        tree, err := r.repo.Worktree()
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to read repository worktree: %w", err)
+        }</span>
+        <span class="cov8" title="1">status, err := tree.Status()
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to read worktree status: %w", err)
+        }</span>
+        <span class="cov8" title="1">result := make([]string, 0, 10)
+        for file, fileStatus := range status </span><span class="cov8" title="1">{
+                if fileStatus.Worktree != git.Unmodified || fileStatus.Staging != git.Unmodified </span><span class="cov8" title="1">{
+                        result = append(result, file)
+                }</span>
+        }
+        <span class="cov8" title="1">return result, nil</span>
+}
+
+// Return the Tree Hash of the current commit in the repository.
+func (r *Repository) GetTreeHash() (string, error) <span class="cov8" title="1">{
+        headRef, err := r.repo.Head()
+        if err != nil </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("failed to get HEAD reference: %w", err)
+        }</span>
+        <span class="cov8" title="1">commit, err := r.repo.CommitObject(headRef.Hash())
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to get current commit object: %w", err)
+        }</span>
+        <span class="cov8" title="1">return commit.TreeHash.String(), nil</span>
+}
+
+// Return the Hash of the current commit in the repository.
+func (r *Repository) GetCommitHash() (string, error) <span class="cov8" title="1">{
+        headRef, err := r.repo.Head()
+        if err != nil </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("failed to get HEAD reference: %w", err)
+        }</span>
+        <span class="cov8" title="1">return headRef.Hash().String(), nil</span>
+}
+
+// Return the remote name.
+func (r *Repository) GetRemote() (string, error) <span class="cov8" title="1">{
+        remotes, err := r.repo.Remotes()
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to get remotes: %w", err)
+        }</span>
+        <span class="cov8" title="1">if len(remotes) == 0 </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("no remotes found")
+        }</span>
+
+        <span class="cov8" title="1">url := remotes[0].Config().URLs[0]
+        return extractRepositoryOwnerAndName(url), nil</span>
+}
 </pre>
 		
-		<pre class="file" id="file7" style="display: none">package version
+		<pre class="file" id="file9" style="display: none">package pullrequest
+
+import (
+        "fmt"
+
+        "github.com/heathcliff26/gh-utility/pkg/client"
+        "github.com/heathcliff26/gh-utility/pkg/git"
+)
+
+// Commit the current changes to the given branch.
+// Will force push the branch if needed.
+// Returns the hashes of the created tree and commit
+func Commit(c *client.Client, dir, msg, branch, token string) (string, string, error) <span class="cov0" title="0">{
+        repo, err := git.OpenRepository(dir)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", "", err
+        }</span>
+        <span class="cov0" title="0">treeHash, err := repo.GetTreeHash()
+        if err != nil </span><span class="cov0" title="0">{
+                return "", "", err
+        }</span>
+        <span class="cov0" title="0">changedFiles, err := repo.GetChangedFiles()
+        if err != nil </span><span class="cov0" title="0">{
+                return "", "", err
+        }</span>
+
+        <span class="cov0" title="0">if len(changedFiles) == 0 </span><span class="cov0" title="0">{
+                return "", "", nil
+        }</span>
+
+        <span class="cov0" title="0">remote, err := repo.GetRemote()
+        if err != nil </span><span class="cov0" title="0">{
+                return "", "", err
+        }</span>
+
+        <span class="cov0" title="0">treeHash, err = c.CreateTree(token, remote, changedFiles, treeHash)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", "", fmt.Errorf("failed to create tree: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">commitHash, err := repo.GetCommitHash()
+        if err != nil </span><span class="cov0" title="0">{
+                return treeHash, "", err
+        }</span>
+
+        <span class="cov0" title="0">commitHash, err = c.CreateCommit(token, remote, msg, treeHash, []string{commitHash})
+        if err != nil </span><span class="cov0" title="0">{
+                return treeHash, "", fmt.Errorf("failed to create commit: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">err = c.CreateOrUpdateBranch(token, remote, branch, commitHash)
+        if err != nil </span><span class="cov0" title="0">{
+                return treeHash, commitHash, fmt.Errorf("failed to create/update branch: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return treeHash, commitHash, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">package utils
+
+import (
+        "os"
+)
+
+func GetToken() string <span class="cov8" title="1">{
+        token := os.Getenv("GITHUB_TOKEN")
+        if token != "" </span><span class="cov8" title="1">{
+                return token
+        }</span>
+        <span class="cov8" title="1">return os.Getenv("GH_TOKEN")</span>
+}
+</pre>
+		
+		<pre class="file" id="file11" style="display: none">package version
 
 import (
         "runtime"

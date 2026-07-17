@@ -1,6 +1,7 @@
 package client
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -60,7 +61,7 @@ func TestGetToken(t *testing.T) {
 		privateKey := testutils.GenerateRSAKey(t)
 
 		token, err := client.GetToken(privateKey, "abcdf", "12345")
-		assert.ErrorContains(err, "request returned non-201 status", "Should return error")
+		assert.ErrorContains(err, "request returned 500, expected 201:", "Should return error")
 		assert.Empty(token)
 	})
 	t.Run("ParseResponseFailure", func(t *testing.T) {
@@ -100,5 +101,237 @@ func TestGetToken(t *testing.T) {
 		token, err := client.GetToken(privateKey, "abcdf", "12345")
 		assert.NoError(err, "Should succeed")
 		assert.Equal("abc", token, "Should return token")
+	})
+}
+
+func TestCreateTree(t *testing.T) {
+	token, repo, baseTree := "testtoken", "test/repo", "base"
+	files := []string{"testdata/tree/deleted.txt"}
+
+	newServer := func(t *testing.T, status int) *httptest.Server {
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert := assert.New(t)
+
+			assert.Equal(http.MethodPost, r.Method, "Should use POST method")
+			assert.Equal("/repos/test/repo/git/trees", r.URL.Path, "Should use correct path")
+			assert.NotEmpty(r.Header.Get("Accept"), "Should set Accept header")
+
+			var treeReq TreeRequest
+			err := json.NewDecoder(r.Body).Decode(&treeReq)
+			assert.NoError(err, "Should decode request")
+
+			assert.Equal(baseTree, treeReq.BaseTree, "Should have correct base tree")
+			assert.Len(treeReq.Tree, 1, "Should have 1 tree object")
+
+			w.WriteHeader(status)
+			_, _ = w.Write([]byte(`{"sha": "abc"}`))
+		}))
+	}
+
+	t.Run("Success", func(t *testing.T) {
+		assert := assert.New(t)
+
+		s := newServer(t, http.StatusCreated)
+		defer s.Close()
+
+		client := NewClient(s.URL)
+
+		hash, err := client.CreateTree(token, repo, files, baseTree)
+		assert.NoError(err, "Should create tree")
+		assert.Equal("abc", hash, "Should return new hash")
+	})
+	t.Run("Failure", func(t *testing.T) {
+		assert := assert.New(t)
+
+		s := newServer(t, http.StatusInternalServerError)
+		defer s.Close()
+
+		client := NewClient(s.URL)
+
+		hash, err := client.CreateTree(token, repo, files, baseTree)
+		assert.Error(err, "Should fail")
+		assert.Empty(hash, "Should not return a hash")
+	})
+}
+
+func TestCreateCommit(t *testing.T) {
+	token, repo, msg, tree, parent := "testtoken", "test/repo", "Test Commit", "abcdef", "123456"
+
+	newServer := func(t *testing.T, status int) *httptest.Server {
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert := assert.New(t)
+
+			assert.Equal(http.MethodPost, r.Method, "Should use POST method")
+			assert.Equal("/repos/test/repo/git/commits", r.URL.Path, "Should use correct path")
+			assert.NotEmpty(r.Header.Get("Accept"), "Should set Accept header")
+
+			var commitReq CommitRequest
+			err := json.NewDecoder(r.Body).Decode(&commitReq)
+			assert.NoError(err, "Should decode request")
+
+			assert.Equal(msg, commitReq.Message, "Should have correct message")
+			assert.Equal(tree, commitReq.Tree, "Should have tree ref")
+			assert.Equal(parent, commitReq.Parents[0], "Should have parent ref")
+
+			w.WriteHeader(status)
+			_, _ = w.Write([]byte(`{"sha": "abc"}`))
+		}))
+	}
+
+	t.Run("Success", func(t *testing.T) {
+		assert := assert.New(t)
+
+		s := newServer(t, http.StatusCreated)
+		defer s.Close()
+
+		client := NewClient(s.URL)
+
+		hash, err := client.CreateCommit(token, repo, msg, tree, []string{parent})
+		assert.NoError(err, "Should create commit")
+		assert.Equal("abc", hash, "Should return new hash")
+	})
+	t.Run("Failure", func(t *testing.T) {
+		assert := assert.New(t)
+
+		s := newServer(t, http.StatusInternalServerError)
+		defer s.Close()
+
+		client := NewClient(s.URL)
+
+		hash, err := client.CreateCommit(token, repo, msg, tree, []string{parent})
+		assert.Error(err, "Should fail")
+		assert.Empty(hash, "Should not return a hash")
+	})
+}
+
+func TestCreateOrUpdateBranch(t *testing.T) {
+	var statusCodes, expectedEndpoints []int
+	i := 0
+
+	token, repo, branch, commit := "testtoken", "test/repo", "testbranch", "abcdef"
+
+	newServer := func(t *testing.T) *httptest.Server {
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert := assert.New(t)
+
+			assert.NotEmpty(r.Header.Get("Accept"), "Should set Accept header")
+
+			var branchReq BranchRequest
+
+			switch expectedEndpoints[i] {
+			case 0:
+				assert.Equal(http.MethodGet, r.Method, "Should use GET method")
+				assert.Equal("/repos/test/repo/git/refs/heads/testbranch", r.URL.Path, "Should use correct path")
+			case 1:
+				assert.Equal(http.MethodPost, r.Method, "Should use POST method")
+				assert.Equal("/repos/test/repo/git/refs", r.URL.Path, "Should use correct path")
+
+				err := json.NewDecoder(r.Body).Decode(&branchReq)
+				assert.NoError(err, "Should decode request")
+				assert.Equal(commit, branchReq.SHA, "Should have commit SHA")
+				assert.Equal("refs/heads/"+branch, branchReq.Ref, "Should have branch")
+				assert.Nil(branchReq.Force, "Should not have force set")
+			case 2:
+				assert.Equal(http.MethodPatch, r.Method, "Should use PATCH method")
+				assert.Equal("/repos/test/repo/git/refs/heads/testbranch", r.URL.Path, "Should use correct path")
+
+				err := json.NewDecoder(r.Body).Decode(&branchReq)
+				assert.NoError(err, "Should decode request")
+				assert.Equal(commit, branchReq.SHA, "Should have commit SHA")
+				assert.Empty(branchReq.Ref, "Should not have branch")
+				assert.NotNil(branchReq.Force, "Should have force set")
+			default:
+				t.Fatal("Unexpected endpoint")
+			}
+
+			w.WriteHeader(statusCodes[i])
+			i++
+		}))
+	}
+
+	t.Run("ExistsFails", func(t *testing.T) {
+		assert := assert.New(t)
+
+		statusCodes = []int{http.StatusInternalServerError}
+		expectedEndpoints = []int{0}
+		i = 0
+
+		s := newServer(t)
+		defer s.Close()
+
+		client := NewClient(s.URL)
+
+		err := client.CreateOrUpdateBranch(token, repo, branch, commit)
+		assert.ErrorContains(err, "failed to check if branch exists: ", "Should fail with correct error")
+
+		assert.Equal(1, i, "Should have called the endpoint the correct number of times")
+	})
+	t.Run("CreateBranch", func(t *testing.T) {
+		assert := assert.New(t)
+
+		statusCodes = []int{http.StatusNotFound, http.StatusCreated}
+		expectedEndpoints = []int{0, 1}
+		i = 0
+
+		s := newServer(t)
+		defer s.Close()
+
+		client := NewClient(s.URL)
+
+		err := client.CreateOrUpdateBranch(token, repo, branch, commit)
+		assert.NoError(err, "Should succeed")
+
+		assert.Equal(2, i, "Should have called the endpoint the correct number of times")
+	})
+	t.Run("UpdateBranch", func(t *testing.T) {
+		assert := assert.New(t)
+
+		statusCodes = []int{http.StatusOK, http.StatusOK}
+		expectedEndpoints = []int{0, 2}
+		i = 0
+
+		s := newServer(t)
+		defer s.Close()
+
+		client := NewClient(s.URL)
+
+		err := client.CreateOrUpdateBranch(token, repo, branch, commit)
+		assert.NoError(err, "Should succeed")
+
+		assert.Equal(2, i, "Should have called the endpoint the correct number of times")
+	})
+	t.Run("CreateBranchFail", func(t *testing.T) {
+		assert := assert.New(t)
+
+		statusCodes = []int{http.StatusNotFound, http.StatusInternalServerError}
+		expectedEndpoints = []int{0, 1}
+		i = 0
+
+		s := newServer(t)
+		defer s.Close()
+
+		client := NewClient(s.URL)
+
+		err := client.CreateOrUpdateBranch(token, repo, branch, commit)
+		assert.ErrorContains(err, "failed to create branch:", "Should fail with correct error")
+
+		assert.Equal(2, i, "Should have called the endpoint the correct number of times")
+	})
+	t.Run("UpdateBranchFail", func(t *testing.T) {
+		assert := assert.New(t)
+
+		statusCodes = []int{http.StatusOK, http.StatusInternalServerError}
+		expectedEndpoints = []int{0, 2}
+		i = 0
+
+		s := newServer(t)
+		defer s.Close()
+
+		client := NewClient(s.URL)
+
+		err := client.CreateOrUpdateBranch(token, repo, branch, commit)
+		assert.ErrorContains(err, "failed to update branch:", "Should fail with correct error")
+
+		assert.Equal(2, i, "Should have called the endpoint the correct number of times")
 	})
 }

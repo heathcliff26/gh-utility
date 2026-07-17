@@ -34,6 +34,7 @@ Usage:
 
 Available Commands:
   clone       Clone a repository with a temporary installation token into the specified directory
+  commit      Push a new commit to the given branch using force push
   completion  Generate the autocompletion script for the specified shell
   help        Help about any command
   token       Create a new temporary access token for the app

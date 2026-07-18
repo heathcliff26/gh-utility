@@ -124,3 +124,13 @@ func (r *Repository) GetRemote() (string, error) {
 	url := remotes[0].Config().URLs[0]
 	return extractRepositoryOwnerAndName(url), nil
 }
+
+// Return the name of the current branch
+func (r *Repository) CurrentBranch() (string, error) {
+	head, err := r.repo.Head()
+	if err != nil {
+		return "", fmt.Errorf("failed to get HEAD reference: %w", err)
+	}
+	ref := head.Name().String()
+	return strings.TrimPrefix(ref, "refs/heads/"), nil
+}

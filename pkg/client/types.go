@@ -78,3 +78,28 @@ type BranchRequest struct {
 	SHA   string `json:"sha"`
 	Force *bool  `json:"force,omitempty"`
 }
+
+type PrRequest struct {
+	Title string `json:"title,omitempty"`
+	Head  string `json:"head,omitempty"`
+	Base  string `json:"base,omitempty"`
+	Body  string `json:"body,omitempty"`
+}
+
+type PrResponse struct {
+	Url     string `json:"url,omitempty"`
+	Id      int    `json:"id,omitempty"`
+	HtmlUrl string `json:"html_url,omitempty"`
+	Number  int    `json:"number,omitempty"`
+	State   string `json:"state,omitempty"`
+	Title   string `json:"title,omitempty"`
+	Body    string `json:"body,omitempty"`
+	Head    struct {
+		Label string `json:"label,omitempty"`
+		Ref   string `json:"ref,omitempty"`
+	} `json:"head,omitzero"`
+	Base struct {
+		Label string `json:"label,omitempty"`
+		Ref   string `json:"ref,omitempty"`
+	} `json:"base,omitzero"`
+}

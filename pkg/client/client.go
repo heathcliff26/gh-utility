@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -241,6 +242,123 @@ func (c *Client) CreateOrUpdateBranch(token string, repo string, name string, co
 	} else {
 		return c.CreateBranch(token, repo, name, commit)
 	}
+}
+
+// Return a PR for the given branch
+// API endpoint: GET /repos/{owner}/{repo}/pulls
+// Parameters:
+// - token: The GitHub app installation token
+// - repo: The repository name in the format "owner/repo".
+// - branch: Name of the branch
+// Returns:
+// - The Pull Request or nil if none exists
+// - An error if any occurred
+func (c *Client) GetPullRequestForBranch(token, repo, branch string) (*PrResponse, error) {
+	owner := strings.Split(repo, "/")[0]
+	query := url.QueryEscape(fmt.Sprintf("%s:%s", owner, branch))
+
+	req, err := newRequest(http.MethodGet, fmt.Sprintf("%s/repos/%s/pulls?head=%s", c.endpoint, repo, query), nil, token)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	var res []PrResponse
+	err = c.do(req, http.StatusOK, &res)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list pull requests: %w", err)
+	}
+
+	for _, pr := range res {
+		if pr.Head.Ref == branch {
+			return &pr, nil
+		}
+	}
+	return nil, nil
+}
+
+// Create a pull request with the given title and body
+// API endpoint: POST /repos/{owner}/{repo}/pulls
+// Parameters:
+// - token: The GitHub app installation token
+// - repo: The repository name in the format "owner/repo".
+// - title: Title of the PR
+// - body: Body of the PR
+// - head: Head branch of the PR
+// - base: Base branch of the PR
+// Returns:
+// - Pull Request
+// - An error if any occurred
+func (c *Client) CreatePullRequest(token, repo, title, body, head, base string) (*PrResponse, error) {
+	owner := strings.Split(repo, "/")[0]
+	pr := &PrRequest{
+		Title: title,
+		Head:  fmt.Sprintf("%s:%s", owner, head),
+		Base:  base,
+		Body:  body,
+	}
+
+	req, err := newRequest(http.MethodPost, fmt.Sprintf("%s/repos/%s/pulls", c.endpoint, repo), pr, token)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	var res PrResponse
+	err = c.do(req, http.StatusCreated, &res)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create pull request: %w", err)
+	}
+	return &res, nil
+}
+
+// Update the pull request with the given title and body
+// API endpoint: PATCH /repos/{owner}/{repo}/pulls/{pull_number}
+// Parameters:
+// - token: The GitHub app installation token
+// - repo: The repository name in the format "owner/repo".
+// - number: Number of the PR to update
+// - title: Title of the PR
+// - body: Body of the PR
+// - base: Base branch of the PR
+// Returns:
+// - Pull Request
+// - An error if any occurred
+func (c *Client) UpdatePullRequest(token, repo string, number int, title, body, base string) (*PrResponse, error) {
+	pr := &PrRequest{
+		Title: title,
+		Base:  base,
+		Body:  body,
+	}
+
+	req, err := newRequest(http.MethodPatch, fmt.Sprintf("%s/repos/%s/pulls/%d", c.endpoint, repo, number), pr, token)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	var res PrResponse
+	err = c.do(req, http.StatusOK, &res)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update pull request: %w", err)
+	}
+	return &res, nil
+}
+
+// Check if there is already an existing PR for the head branch.
+// Call Create/UpdatePullRequest as needed.
+// Will check if there are changes before calling update.
+func (c *Client) CreateOrUpdatePullRequest(token, repo, title, body, head, base string) (*PrResponse, error) {
+	pr, err := c.GetPullRequestForBranch(token, repo, head)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check for existing PR: %w", err)
+	}
+	if pr == nil {
+		return c.CreatePullRequest(token, repo, title, body, head, base)
+	}
+
+	if pr.Title == title && pr.Body == body && pr.Base.Ref == base {
+		return pr, nil
+	}
+
+	return c.UpdatePullRequest(token, repo, pr.Number, title, body, base)
 }
 
 // Send the given http request and parse the returned result

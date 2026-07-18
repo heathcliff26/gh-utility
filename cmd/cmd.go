@@ -26,10 +26,10 @@ func NewRoot() *cobra.Command {
 	}
 
 	rootCmd.AddCommand(
-		version.NewCommand(Name),
-		token.NewCommand(),
 		clone.NewCommand(),
 		commit.NewCommand(),
+		token.NewCommand(),
+		version.NewCommand(Name),
 	)
 
 	return rootCmd

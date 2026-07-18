@@ -75,7 +75,7 @@
 				
 				<option value="file9">github.com/heathcliff26/gh-utility/pkg/git/git.go (93.0%)</option>
 				
-				<option value="file10">github.com/heathcliff26/gh-utility/pkg/pullrequest/pr.go (0.0%)</option>
+				<option value="file10">github.com/heathcliff26/gh-utility/pkg/pullrequest/pr.go (67.5%)</option>
 				
 				<option value="file11">github.com/heathcliff26/gh-utility/pkg/utils/utils.go (100.0%)</option>
 				
@@ -1197,74 +1197,74 @@ import (
 // Commit the current changes to the given branch.
 // Will force push the branch if needed.
 // Returns the hashes of the created tree and commit
-func Commit(c *client.Client, dir, msg, branch, token string) (string, string, error) <span class="cov0" title="0">{
+func Commit(c *client.Client, dir, msg, branch, token string) (string, string, error) <span class="cov8" title="1">{
         repo, err := git.OpenRepository(dir)
         if err != nil </span><span class="cov0" title="0">{
                 return "", "", err
         }</span>
-        <span class="cov0" title="0">treeHash, err := repo.GetTreeHash()
+        <span class="cov8" title="1">treeHash, err := repo.GetTreeHash()
         if err != nil </span><span class="cov0" title="0">{
                 return "", "", err
         }</span>
-        <span class="cov0" title="0">changedFiles, err := repo.GetChangedFiles()
+        <span class="cov8" title="1">changedFiles, err := repo.GetChangedFiles()
         if err != nil </span><span class="cov0" title="0">{
                 return "", "", err
         }</span>
 
-        <span class="cov0" title="0">if len(changedFiles) == 0 </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if len(changedFiles) == 0 </span><span class="cov0" title="0">{
                 return "", "", nil
         }</span>
 
-        <span class="cov0" title="0">remote, err := repo.GetRemote()
+        <span class="cov8" title="1">remote, err := repo.GetRemote()
         if err != nil </span><span class="cov0" title="0">{
                 return "", "", err
         }</span>
 
-        <span class="cov0" title="0">treeHash, err = c.CreateTree(token, remote, changedFiles, treeHash)
+        <span class="cov8" title="1">treeHash, err = c.CreateTree(token, remote, changedFiles, treeHash)
         if err != nil </span><span class="cov0" title="0">{
                 return "", "", fmt.Errorf("failed to create tree: %w", err)
         }</span>
 
-        <span class="cov0" title="0">commitHash, err := repo.GetCommitHash()
+        <span class="cov8" title="1">commitHash, err := repo.GetCommitHash()
         if err != nil </span><span class="cov0" title="0">{
                 return treeHash, "", err
         }</span>
 
-        <span class="cov0" title="0">commitHash, err = c.CreateCommit(token, remote, msg, treeHash, []string{commitHash})
+        <span class="cov8" title="1">commitHash, err = c.CreateCommit(token, remote, msg, treeHash, []string{commitHash})
         if err != nil </span><span class="cov0" title="0">{
                 return treeHash, "", fmt.Errorf("failed to create commit: %w", err)
         }</span>
 
-        <span class="cov0" title="0">err = c.CreateOrUpdateBranch(token, remote, branch, commitHash)
+        <span class="cov8" title="1">err = c.CreateOrUpdateBranch(token, remote, branch, commitHash)
         if err != nil </span><span class="cov0" title="0">{
                 return treeHash, commitHash, fmt.Errorf("failed to create/update branch: %w", err)
         }</span>
 
-        <span class="cov0" title="0">return treeHash, commitHash, nil</span>
+        <span class="cov8" title="1">return treeHash, commitHash, nil</span>
 }
 
 // Check if a pull request already exists.
 // Create if not exists, update if exists.
 // Returns a url to the pull request.
-func PullRequest(c *client.Client, dir, branch, title, body, token string, labels []string) (string, error) <span class="cov0" title="0">{
+func PullRequest(c *client.Client, dir, branch, title, body, token string, labels []string) (string, error) <span class="cov8" title="1">{
         repo, err := git.OpenRepository(dir)
         if err != nil </span><span class="cov0" title="0">{
                 return "", err
         }</span>
-        <span class="cov0" title="0">remote, err := repo.GetRemote()
+        <span class="cov8" title="1">remote, err := repo.GetRemote()
         if err != nil </span><span class="cov0" title="0">{
                 return "", err
         }</span>
-        <span class="cov0" title="0">base, err := repo.CurrentBranch()
+        <span class="cov8" title="1">base, err := repo.CurrentBranch()
         if err != nil </span><span class="cov0" title="0">{
                 return "", err
         }</span>
 
-        <span class="cov0" title="0">pr, err := c.CreateOrUpdatePullRequest(token, remote, title, body, branch, base)
+        <span class="cov8" title="1">pr, err := c.CreateOrUpdatePullRequest(token, remote, title, body, branch, base)
         if err != nil </span><span class="cov0" title="0">{
                 return "", err
         }</span>
-        <span class="cov0" title="0">return pr.HtmlUrl, nil</span>
+        <span class="cov8" title="1">return pr.HtmlUrl, nil</span>
 }
 </pre>
 		

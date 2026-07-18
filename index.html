@@ -168,10 +168,10 @@ func NewRoot() *cobra.Command <span class="cov8" title="1">{
         }
 
         <span class="cov8" title="1">rootCmd.AddCommand(
-                version.NewCommand(Name),
-                token.NewCommand(),
                 clone.NewCommand(),
                 commit.NewCommand(),
+                token.NewCommand(),
+                version.NewCommand(Name),
         )
 
         return rootCmd</span>

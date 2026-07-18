@@ -43,6 +43,7 @@ func fileToTreeObject(path string) (*TreeObject, error) {
 	// #nosec G302 G304 -- File permissions and path are wanted this way
 	f, err := os.OpenFile(path, os.O_RDONLY, 0644)
 	if errors.Is(err, os.ErrNotExist) {
+		obj.DeleteFile = true
 		return obj, nil
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to open file `%s`: %w", path, err)

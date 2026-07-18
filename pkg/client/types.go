@@ -16,22 +16,34 @@ type TokenResponse struct {
 
 type TreeObject struct {
 	Path    string `json:"path"`
-	Mode    string `json:"mode,omitempty"`
+	Mode    string `json:"mode"`
 	Type    string `json:"type"`
 	Content string `json:"content"`
+
+	DeleteFile bool `json:"-"`
 }
 
 func (t *TreeObject) MarshalJSON() ([]byte, error) {
 	var res any
-	if t.Content == "" {
-		tmp := &treeObjectWithSHA{
+	if t.DeleteFile {
+		tmp := &struct {
+			Path string  `json:"path"`
+			Mode string  `json:"mode"`
+			Type string  `json:"type"`
+			SHA  *string `json:"sha"`
+		}{
 			Path: t.Path,
 			Mode: t.Mode,
 			Type: t.Type,
 		}
 		res = tmp
 	} else {
-		tmp := &treeObjectWithoutSHA{
+		tmp := &struct {
+			Path    string `json:"path"`
+			Mode    string `json:"mode"`
+			Type    string `json:"type"`
+			Content string `json:"content"`
+		}{
 			Path:    t.Path,
 			Mode:    t.Mode,
 			Type:    t.Type,
@@ -40,20 +52,6 @@ func (t *TreeObject) MarshalJSON() ([]byte, error) {
 		res = tmp
 	}
 	return json.Marshal(res)
-}
-
-type treeObjectWithSHA struct {
-	Path string  `json:"path"`
-	Mode string  `json:"mode"`
-	Type string  `json:"type"`
-	SHA  *string `json:"sha"`
-}
-
-type treeObjectWithoutSHA struct {
-	Path    string `json:"path"`
-	Mode    string `json:"mode"`
-	Type    string `json:"type"`
-	Content string `json:"content"`
 }
 
 type TreeRequest struct {

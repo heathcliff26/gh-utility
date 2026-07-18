@@ -38,6 +38,7 @@ func TestFileToTreeObject(t *testing.T) {
 		assert.Equal(treeTypeBlob, obj.Type, "Should have correct Type")
 		assert.NotEmpty(obj.Content, "Should have read file content")
 		assert.Equal(treeModeFile, obj.Mode, "Should have correct mode")
+		assert.False(obj.DeleteFile, "Should not mark file for deletion")
 	})
 	t.Run("Executable", func(t *testing.T) {
 		assert := assert.New(t)
@@ -51,6 +52,7 @@ func TestFileToTreeObject(t *testing.T) {
 		assert.Equal(treeTypeBlob, obj.Type, "Should have correct Type")
 		assert.NotEmpty(obj.Content, "Should have read file content")
 		assert.Equal(treeModeExec, obj.Mode, "Should have correct mode")
+		assert.False(obj.DeleteFile, "Should not mark file for deletion")
 	})
 	t.Run("Deleted", func(t *testing.T) {
 		assert := assert.New(t)
@@ -64,5 +66,6 @@ func TestFileToTreeObject(t *testing.T) {
 		assert.Equal(treeTypeBlob, obj.Type, "Should have correct Type")
 		assert.Empty(obj.Content, "Should have no content")
 		assert.Equal(treeModeFile, obj.Mode, "Should have correct mode")
+		assert.True(obj.DeleteFile, "Should mark file for deletion")
 	})
 }

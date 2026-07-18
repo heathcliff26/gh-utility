@@ -320,3 +320,28 @@ func TestGetRemote(t *testing.T) {
 		assert.Equal("heathcliff26/gh-utility", remote, "Should not return a remote")
 	})
 }
+
+func TestCurrentBranch(t *testing.T) {
+	t.Run("NoHead", func(t *testing.T) {
+		assert := assert.New(t)
+
+		dir, repo := testutils.NewTestRepository(t)
+		r := &Repository{repo: repo}
+
+		assert.NoError(os.RemoveAll(filepath.Join(dir, ".git")), "Should remove .git repo")
+
+		branch, err := r.CurrentBranch()
+		assert.Error(err, "Should return an error")
+		assert.Empty(branch, "Should not return a branch")
+	})
+	t.Run("Success", func(t *testing.T) {
+		assert := assert.New(t)
+
+		_, repo := testutils.NewTestRepository(t)
+		r := &Repository{repo: repo}
+
+		branch, err := r.CurrentBranch()
+		assert.NoError(err)
+		assert.Equal("master", branch, "Should return a hash")
+	})
+}

@@ -55,3 +55,27 @@ func Commit(c *client.Client, dir, msg, branch, token string) (string, string, e
 
 	return treeHash, commitHash, nil
 }
+
+// Check if a pull request already exists.
+// Create if not exists, update if exists.
+// Returns a url to the pull request.
+func PullRequest(c *client.Client, dir, branch, title, body, token string, labels []string) (string, error) {
+	repo, err := git.OpenRepository(dir)
+	if err != nil {
+		return "", err
+	}
+	remote, err := repo.GetRemote()
+	if err != nil {
+		return "", err
+	}
+	base, err := repo.CurrentBranch()
+	if err != nil {
+		return "", err
+	}
+
+	pr, err := c.CreateOrUpdatePullRequest(token, remote, title, body, branch, base)
+	if err != nil {
+		return "", err
+	}
+	return pr.HtmlUrl, nil
+}

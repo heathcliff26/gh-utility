@@ -37,6 +37,7 @@ Available Commands:
   commit      Push a new commit to the given branch using force push
   completion  Generate the autocompletion script for the specified shell
   help        Help about any command
+  pr          Commits and (force) pushes current changes to a (new) branch and creates/updates a pull request
   token       Create a new temporary access token for the app
   version     Print version information and exit
 

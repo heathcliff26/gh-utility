@@ -136,7 +136,7 @@ func TestCreateTree(t *testing.T) {
 
 		client := NewClient(s.URL)
 
-		hash, err := client.CreateTree(token, repo, files, baseTree)
+		hash, err := client.CreateTree(token, repo, files, baseTree, "")
 		assert.NoError(err, "Should create tree")
 		assert.Equal("abc", hash, "Should return new hash")
 	})
@@ -148,7 +148,7 @@ func TestCreateTree(t *testing.T) {
 
 		client := NewClient(s.URL)
 
-		hash, err := client.CreateTree(token, repo, files, baseTree)
+		hash, err := client.CreateTree(token, repo, files, baseTree, "")
 		assert.Error(err, "Should fail")
 		assert.Empty(hash, "Should not return a hash")
 	})

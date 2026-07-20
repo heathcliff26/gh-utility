@@ -33,7 +33,7 @@ func Commit(c *client.Client, dir, msg, branch, token string) (string, string, e
 		return "", "", err
 	}
 
-	treeHash, err = c.CreateTree(token, remote, changedFiles, treeHash)
+	treeHash, err = c.CreateTree(token, remote, changedFiles, treeHash, dir)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to create tree: %w", err)
 	}

@@ -30,7 +30,7 @@ func TestFileToTreeObject(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
 
-		obj, err := fileToTreeObject("testdata/tree/file.txt")
+		obj, err := fileToTreeObject("", "testdata/tree/file.txt")
 		require.NoError(err)
 		require.NotNil(obj)
 
@@ -44,11 +44,11 @@ func TestFileToTreeObject(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
 
-		obj, err := fileToTreeObject("testdata/tree/executable.txt")
+		obj, err := fileToTreeObject("testdata", "tree/executable.txt")
 		require.NoError(err)
 		require.NotNil(obj)
 
-		assert.Equal("testdata/tree/executable.txt", obj.Path, "Should have correct Path")
+		assert.Equal("tree/executable.txt", obj.Path, "Should have correct Path")
 		assert.Equal(treeTypeBlob, obj.Type, "Should have correct Type")
 		assert.NotEmpty(obj.Content, "Should have read file content")
 		assert.Equal(treeModeExec, obj.Mode, "Should have correct mode")
@@ -58,11 +58,11 @@ func TestFileToTreeObject(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
 
-		obj, err := fileToTreeObject("testdata/tree/deleted.txt")
+		obj, err := fileToTreeObject("testdata/tree", "deleted.txt")
 		require.NoError(err)
 		require.NotNil(obj)
 
-		assert.Equal("testdata/tree/deleted.txt", obj.Path, "Should have correct Path")
+		assert.Equal("deleted.txt", obj.Path, "Should have correct Path")
 		assert.Equal(treeTypeBlob, obj.Type, "Should have correct Type")
 		assert.Empty(obj.Content, "Should have no content")
 		assert.Equal(treeModeFile, obj.Mode, "Should have correct mode")

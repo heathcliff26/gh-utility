@@ -37,6 +37,14 @@ func TestCommit(t *testing.T) {
 			case 0:
 				assert.Equal(http.MethodPost, r.Method, "Should create tree")
 				assert.Equal("/repos/heathcliff26/gh-utility/git/trees", r.URL.Path, "Should use tree endpoint")
+
+				var req client.TreeRequest
+				err := json.NewDecoder(r.Body).Decode(&req)
+				require.NoError(err, "Should decode tree request")
+				require.Len(req.Tree, 1, "Should have 1 tree object")
+				assert.Equal("new.txt", req.Tree[0].Path, "Should contain new file")
+				assert.Equal("new content", req.Tree[0].Content, "Should contain new file content")
+
 				w.WriteHeader(http.StatusCreated)
 				_, _ = w.Write([]byte(`{"sha":"tree-sha"}`))
 			case 1:

@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 )
 
 func newRequest(method string, url string, body any, token string) (req *http.Request, err error) {
@@ -34,11 +35,15 @@ func newRequest(method string, url string, body any, token string) (req *http.Re
 	return
 }
 
-func fileToTreeObject(path string) (*TreeObject, error) {
+func fileToTreeObject(baseDir, path string) (*TreeObject, error) {
 	obj := &TreeObject{
 		Path: path,
 		Type: treeTypeBlob,
 		Mode: treeModeFile,
+	}
+
+	if baseDir != "" {
+		path = filepath.Join(baseDir, path)
 	}
 	// #nosec G302 G304 -- File permissions and path are wanted this way
 	f, err := os.OpenFile(path, os.O_RDONLY, 0644)

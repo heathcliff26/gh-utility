@@ -77,20 +77,21 @@ func (c *Client) GetToken(keyPath string, clientID string, installationID string
 	return tokenResp.Token, nil
 }
 
-// Create a new Git tree object with the give files.
+// Create a new Git tree object with the given files.
 // API endpoint: POST /repos/{owner}/{repo}/git/trees
 // Parameters:
 // - token: The GitHub app installation token
 // - repo: The repository name in the format "owner/repo".
-// - files: A list of file paths
+// - files: A list of file paths (relative to the repository root)
 // - baseTree: The SHA of the base tree to create the new tree from.
+// - dir: The repository location to read the files from. Uses PWD when empty.
 // Returns:
 // - The SHA of the created tree object
 // - An error if any occurred
-func (c *Client) CreateTree(token string, repo string, files []string, baseTree string) (string, error) {
+func (c *Client) CreateTree(token string, repo string, files []string, baseTree string, dir string) (string, error) {
 	objects := make([]*TreeObject, len(files))
 	for i, file := range files {
-		obj, err := fileToTreeObject(file)
+		obj, err := fileToTreeObject(dir, file)
 		if err != nil {
 			return "", fmt.Errorf("failed to create tree object for file '%s': %w", file, err)
 		}

@@ -71,7 +71,7 @@
 				
 				<option value="file7">github.com/heathcliff26/gh-utility/pkg/client/types.go (100.0%)</option>
 				
-				<option value="file8">github.com/heathcliff26/gh-utility/pkg/client/utils.go (79.4%)</option>
+				<option value="file8">github.com/heathcliff26/gh-utility/pkg/client/utils.go (80.6%)</option>
 				
 				<option value="file9">github.com/heathcliff26/gh-utility/pkg/git/git.go (93.0%)</option>
 				
@@ -559,20 +559,21 @@ func (c *Client) GetToken(keyPath string, clientID string, installationID string
         <span class="cov8" title="1">return tokenResp.Token, nil</span>
 }
 
-// Create a new Git tree object with the give files.
+// Create a new Git tree object with the given files.
 // API endpoint: POST /repos/{owner}/{repo}/git/trees
 // Parameters:
 // - token: The GitHub app installation token
 // - repo: The repository name in the format "owner/repo".
-// - files: A list of file paths
+// - files: A list of file paths (relative to the repository root)
 // - baseTree: The SHA of the base tree to create the new tree from.
+// - dir: The repository location to read the files from. Uses PWD when empty.
 // Returns:
 // - The SHA of the created tree object
 // - An error if any occurred
-func (c *Client) CreateTree(token string, repo string, files []string, baseTree string) (string, error) <span class="cov8" title="1">{
+func (c *Client) CreateTree(token string, repo string, files []string, baseTree string, dir string) (string, error) <span class="cov8" title="1">{
         objects := make([]*TreeObject, len(files))
         for i, file := range files </span><span class="cov8" title="1">{
-                obj, err := fileToTreeObject(file)
+                obj, err := fileToTreeObject(dir, file)
                 if err != nil </span><span class="cov0" title="0">{
                         return "", fmt.Errorf("failed to create tree object for file '%s': %w", file, err)
                 }</span>
@@ -987,6 +988,7 @@ import (
         "io"
         "net/http"
         "os"
+        "path/filepath"
 )
 
 func newRequest(method string, url string, body any, token string) (req *http.Request, err error) <span class="cov8" title="1">{
@@ -1013,14 +1015,18 @@ func newRequest(method string, url string, body any, token string) (req *http.Re
         <span class="cov8" title="1">return</span>
 }
 
-func fileToTreeObject(path string) (*TreeObject, error) <span class="cov8" title="1">{
+func fileToTreeObject(baseDir, path string) (*TreeObject, error) <span class="cov8" title="1">{
         obj := &amp;TreeObject{
                 Path: path,
                 Type: treeTypeBlob,
                 Mode: treeModeFile,
         }
+
+        if baseDir != "" </span><span class="cov8" title="1">{
+                path = filepath.Join(baseDir, path)
+        }</span>
         // #nosec G302 G304 -- File permissions and path are wanted this way
-        f, err := os.OpenFile(path, os.O_RDONLY, 0644)
+        <span class="cov8" title="1">f, err := os.OpenFile(path, os.O_RDONLY, 0644)
         if errors.Is(err, os.ErrNotExist) </span><span class="cov8" title="1">{
                 obj.DeleteFile = true
                 return obj, nil
@@ -1220,7 +1226,7 @@ func Commit(c *client.Client, dir, msg, branch, token string) (string, string, e
                 return "", "", err
         }</span>
 
-        <span class="cov8" title="1">treeHash, err = c.CreateTree(token, remote, changedFiles, treeHash)
+        <span class="cov8" title="1">treeHash, err = c.CreateTree(token, remote, changedFiles, treeHash, dir)
         if err != nil </span><span class="cov0" title="0">{
                 return "", "", fmt.Errorf("failed to create tree: %w", err)
         }</span>

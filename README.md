@@ -38,6 +38,7 @@ Available Commands:
   completion  Generate the autocompletion script for the specified shell
   help        Help about any command
   pr          Commits and (force) pushes current changes to a (new) branch and creates/updates a pull request
+  status      Set or update the status of GitHub check runs on commits
   token       Create a new temporary access token for the app
   version     Print version information and exit
 

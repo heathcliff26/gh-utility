@@ -648,3 +648,50 @@ func TestCreateOrUpdatePullRequest(t *testing.T) {
 		assert.Equal(2, i, "Should have made the expected api calls")
 	})
 }
+
+func TestAddLabels(t *testing.T) {
+	token, repo, pr := "testtoken", "test/repo", 1234
+	labels := []string{"bug", "enhancement"}
+
+	newServer := func(t *testing.T, status int) *httptest.Server {
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert := assert.New(t)
+
+			assert.Equal(http.MethodPost, r.Method, "Should use POST method")
+			assert.Equal("/repos/test/repo/issues/1234/labels", r.URL.Path, "Should use correct path")
+			assert.NotEmpty(r.Header.Get("Accept"), "Should set Accept header")
+
+			var req LabelRequest
+			err := json.NewDecoder(r.Body).Decode(&req)
+			assert.NoError(err, "Should decode request")
+
+			assert.Equal(labels, req.Labels, "Should have correct labels")
+
+			w.WriteHeader(status)
+			_, _ = w.Write([]byte(`[{"name":"bug","color":"fc2929"},{"name":"enhancement","color":"a2eeef"}]`))
+		}))
+	}
+
+	t.Run("Success", func(t *testing.T) {
+		assert := assert.New(t)
+
+		s := newServer(t, http.StatusOK)
+		defer s.Close()
+
+		client := NewClient(s.URL)
+
+		err := client.AddLabels(token, repo, pr, labels)
+		assert.NoError(err, "Should add labels")
+	})
+	t.Run("Failure", func(t *testing.T) {
+		assert := assert.New(t)
+
+		s := newServer(t, http.StatusInternalServerError)
+		defer s.Close()
+
+		client := NewClient(s.URL)
+
+		err := client.AddLabels(token, repo, pr, labels)
+		assert.Error(err, "Should fail")
+	})
+}

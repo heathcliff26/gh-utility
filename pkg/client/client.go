@@ -362,6 +362,32 @@ func (c *Client) CreateOrUpdatePullRequest(token, repo, title, body, head, base 
 	return c.UpdatePullRequest(token, repo, pr.Number, title, body, base)
 }
 
+// Add labels to a pull request.
+// API endpoint: POST /repos/{owner}/{repo}/issues/{pull_number}/labels
+// Parameters:
+// - token: The GitHub app installation token
+// - repo: The repository name in the format "owner/repo".
+// - pr: Number of the PR
+// - labels: List of label names to add
+// Returns:
+// - An error if any occurred
+func (c *Client) AddLabels(token string, repo string, pr int, labels []string) error {
+	labelReq := &LabelRequest{
+		Labels: labels,
+	}
+
+	req, err := newRequest(http.MethodPost, fmt.Sprintf("%s/repos/%s/issues/%d/labels", c.endpoint, repo, pr), labelReq, token)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	err = c.do(req, http.StatusOK, nil)
+	if err != nil {
+		return fmt.Errorf("failed to add labels: %w", err)
+	}
+	return nil
+}
+
 // Send the given http request and parse the returned result
 func (c *Client) do(req *http.Request, status int, v any) error {
 	// #nosec G704 -- Endpoint should be user controlled, actual Paths are hardcoded

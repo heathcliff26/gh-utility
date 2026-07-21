@@ -87,13 +87,14 @@ type PrRequest struct {
 }
 
 type PrResponse struct {
-	Url     string `json:"url,omitempty"`
-	Id      int    `json:"id,omitempty"`
-	HtmlUrl string `json:"html_url,omitempty"`
-	Number  int    `json:"number,omitempty"`
-	State   string `json:"state,omitempty"`
-	Title   string `json:"title,omitempty"`
-	Body    string `json:"body,omitempty"`
+	Url     string  `json:"url,omitempty"`
+	Id      int     `json:"id,omitempty"`
+	HtmlUrl string  `json:"html_url,omitempty"`
+	Number  int     `json:"number,omitempty"`
+	State   string  `json:"state,omitempty"`
+	Title   string  `json:"title,omitempty"`
+	Body    string  `json:"body,omitempty"`
+	Labels  []Label `json:"labels,omitempty"`
 	Head    struct {
 		Label string `json:"label,omitempty"`
 		Ref   string `json:"ref,omitempty"`
@@ -102,4 +103,12 @@ type PrResponse struct {
 		Label string `json:"label,omitempty"`
 		Ref   string `json:"ref,omitempty"`
 	} `json:"base,omitzero"`
+}
+
+type LabelRequest struct {
+	Labels []string `json:"labels"`
+}
+
+type Label struct {
+	Name string `json:"name"`
 }

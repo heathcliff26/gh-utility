@@ -129,3 +129,162 @@ func TestPullRequest(t *testing.T) {
 		assert.Equal(2, requestCount, "Should make expected API calls")
 	})
 }
+
+func TestPullRequestWithLabels(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		assert := assert.New(t)
+		require := require.New(t)
+
+		dir, repo := testutils.NewTestRepository(t)
+		_, err := repo.CreateRemote(&config.RemoteConfig{
+			Name: "origin",
+			URLs: []string{"https://github.com/heathcliff26/gh-utility.git"},
+		})
+		require.NoError(err, "Should add remote")
+
+		headRef, err := repo.Head()
+		require.NoError(err, "Should read current branch")
+		baseBranch := strings.TrimPrefix(headRef.Name().String(), "refs/heads/")
+
+		var requestCount int
+		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch requestCount {
+			case 0:
+				assert.Equal(http.MethodGet, r.Method, "Should list pull requests")
+				assert.Equal("/repos/heathcliff26/gh-utility/pulls", r.URL.Path, "Should use pulls endpoint")
+				assert.Equal("heathcliff26:feature", r.URL.Query().Get("head"), "Should query for the head branch")
+				_, _ = w.Write([]byte(`[]`))
+			case 1:
+				assert.Equal(http.MethodPost, r.Method, "Should create pull request")
+				assert.Equal("/repos/heathcliff26/gh-utility/pulls", r.URL.Path, "Should use pulls endpoint")
+
+				var prReq client.PrRequest
+				require.NoError(json.NewDecoder(r.Body).Decode(&prReq), "Should decode pull request payload")
+				assert.Equal("feature title", prReq.Title, "Should use supplied title")
+				assert.Equal("feature body", prReq.Body, "Should use supplied body")
+				assert.Equal("heathcliff26:feature", prReq.Head, "Should use supplied head branch")
+				assert.Equal(baseBranch, prReq.Base, "Should use current branch as base")
+
+				w.WriteHeader(http.StatusCreated)
+				_, _ = w.Write([]byte(`{"html_url":"https://example.com/pr/1","number":1,"labels":[]}`))
+			case 2:
+				assert.Equal(http.MethodPost, r.Method, "Should add labels")
+				assert.Equal("/repos/heathcliff26/gh-utility/issues/1/labels", r.URL.Path, "Should use issues labels endpoint")
+
+				var labelReq client.LabelRequest
+				require.NoError(json.NewDecoder(r.Body).Decode(&labelReq), "Should decode label request")
+				assert.Equal([]string{"bug", "enhancement"}, labelReq.Labels, "Should have correct labels")
+
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`[{"name":"bug","color":"fc2929"},{"name":"enhancement","color":"a2eeef"}]`))
+			default:
+				t.Fatalf("unexpected request %d", requestCount)
+			}
+			requestCount++
+		}))
+		defer s.Close()
+
+		c := client.NewClient(s.URL)
+
+		prURL, err := PullRequest(c, dir, "feature", "feature title", "feature body", "token", []string{"bug", "enhancement"})
+		require.NoError(err, "Should create pull request with labels")
+		assert.Equal("https://example.com/pr/1", prURL, "Should return pull request URL")
+		assert.Equal(3, requestCount, "Should make expected API calls")
+	})
+	t.Run("SkipExistingLabels", func(t *testing.T) {
+		assert := assert.New(t)
+		require := require.New(t)
+
+		dir, repo := testutils.NewTestRepository(t)
+		_, err := repo.CreateRemote(&config.RemoteConfig{
+			Name: "origin",
+			URLs: []string{"https://github.com/heathcliff26/gh-utility.git"},
+		})
+		require.NoError(err, "Should add remote")
+
+		headRef, err := repo.Head()
+		require.NoError(err, "Should read current branch")
+		_ = strings.TrimPrefix(headRef.Name().String(), "refs/heads/")
+
+		var requestCount int
+		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch requestCount {
+			case 0:
+				assert.Equal(http.MethodGet, r.Method, "Should list pull requests")
+				assert.Equal("/repos/heathcliff26/gh-utility/pulls", r.URL.Path, "Should use pulls endpoint")
+				assert.Equal("heathcliff26:feature", r.URL.Query().Get("head"), "Should query for the head branch")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`[{"html_url":"https://example.com/pr/1","number":1,"head":{"ref":"feature"},"labels":[{"name":"bug"}]}]`))
+			case 1:
+				assert.Equal(http.MethodPatch, r.Method, "Should update pull request")
+				assert.Equal("/repos/heathcliff26/gh-utility/pulls/1", r.URL.Path, "Should use pulls endpoint")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{"html_url":"https://example.com/pr/1","number":1,"head":{"ref":"feature"},"labels":[{"name":"bug"}]}`))
+			case 2:
+				assert.Equal(http.MethodPost, r.Method, "Should add labels")
+				assert.Equal("/repos/heathcliff26/gh-utility/issues/1/labels", r.URL.Path, "Should use issues labels endpoint")
+
+				var labelReq client.LabelRequest
+				require.NoError(json.NewDecoder(r.Body).Decode(&labelReq), "Should decode label request")
+				assert.ElementsMatch([]string{"enhancement", "bug"}, labelReq.Labels, "Should add labels")
+
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`[{"name":"enhancement"}]`))
+			default:
+				t.Fatalf("unexpected request %d", requestCount)
+			}
+			requestCount++
+		}))
+		defer s.Close()
+
+		c := client.NewClient(s.URL)
+
+		prURL, err := PullRequest(c, dir, "feature", "feature title", "feature body", "token", []string{"bug", "enhancement"})
+		require.NoError(err, "Should update pull request with labels")
+		assert.Equal("https://example.com/pr/1", prURL, "Should return pull request URL")
+		assert.Equal(3, requestCount, "Should make expected API calls")
+	})
+	t.Run("NoLabelsNeeded", func(t *testing.T) {
+		assert := assert.New(t)
+		require := require.New(t)
+
+		dir, repo := testutils.NewTestRepository(t)
+		_, err := repo.CreateRemote(&config.RemoteConfig{
+			Name: "origin",
+			URLs: []string{"https://github.com/heathcliff26/gh-utility.git"},
+		})
+		require.NoError(err, "Should add remote")
+
+		headRef, err := repo.Head()
+		require.NoError(err, "Should read current branch")
+		_ = strings.TrimPrefix(headRef.Name().String(), "refs/heads/")
+
+		var requestCount int
+		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch requestCount {
+			case 0:
+				assert.Equal(http.MethodGet, r.Method, "Should list pull requests")
+				assert.Equal("/repos/heathcliff26/gh-utility/pulls", r.URL.Path, "Should use pulls endpoint")
+				assert.Equal("heathcliff26:feature", r.URL.Query().Get("head"), "Should query for the head branch")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`[{"html_url":"https://example.com/pr/1","number":1,"head":{"ref":"feature"},"labels":[{"name":"bug"},{"name":"enhancement"}]}]`))
+			case 1:
+				assert.Equal(http.MethodPatch, r.Method, "Should update pull request")
+				assert.Equal("/repos/heathcliff26/gh-utility/pulls/1", r.URL.Path, "Should use pulls endpoint")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{"html_url":"https://example.com/pr/1","number":1,"head":{"ref":"feature"},"labels":[{"name":"bug"},{"name":"enhancement"}]}`))
+			default:
+				t.Fatalf("unexpected request %d", requestCount)
+			}
+			requestCount++
+		}))
+		defer s.Close()
+
+		c := client.NewClient(s.URL)
+
+		prURL, err := PullRequest(c, dir, "feature", "feature title", "feature body", "token", []string{"bug", "enhancement"})
+		require.NoError(err, "Should update pull request with existing labels")
+		assert.Equal("https://example.com/pr/1", prURL, "Should return pull request URL")
+		assert.Equal(2, requestCount, "Should not make label API call when all labels exist")
+	})
+}

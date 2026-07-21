@@ -73,14 +73,9 @@ func run(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	// TODO: Add option to set labels for the PR
 	labels, err := cmd.Flags().GetStringArray(labelFlag)
 	if err != nil {
 		return err
-	}
-	// TODO: Remove
-	if len(labels) > 0 {
-		cmd.PrintErr("Warning: Labels are currently not supported, they will be ignored\n")
 	}
 	endpoint, err := cmd.Flags().GetString(endpointFlag)
 	if err != nil {

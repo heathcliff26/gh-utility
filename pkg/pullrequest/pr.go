@@ -58,6 +58,7 @@ func Commit(c *client.Client, dir, msg, branch, token string) (string, string, e
 
 // Check if a pull request already exists.
 // Create if not exists, update if exists.
+// Will add the given labels to the PR if they are not already present.
 // Returns a url to the pull request.
 func PullRequest(c *client.Client, dir, branch, title, body, token string, labels []string) (string, error) {
 	repo, err := git.OpenRepository(dir)
@@ -77,5 +78,29 @@ func PullRequest(c *client.Client, dir, branch, title, body, token string, label
 	if err != nil {
 		return "", err
 	}
+
+	if hasMissingLabels(pr.Labels, labels) {
+		err = c.AddLabels(token, remote, pr.Number, labels)
+		if err != nil {
+			return pr.HtmlUrl, fmt.Errorf("failed to add labels: %w", err)
+		}
+	}
+
 	return pr.HtmlUrl, nil
+}
+
+func hasMissingLabels(existing []client.Label, requested []string) bool {
+	for _, label := range requested {
+		found := false
+		for _, existingLabel := range existing {
+			if existingLabel.Name == label {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return true
+		}
+	}
+	return false
 }

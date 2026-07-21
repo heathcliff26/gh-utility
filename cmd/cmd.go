@@ -4,6 +4,7 @@ import (
 	"github.com/heathcliff26/gh-utility/cmd/clone"
 	"github.com/heathcliff26/gh-utility/cmd/commit"
 	"github.com/heathcliff26/gh-utility/cmd/pr"
+	"github.com/heathcliff26/gh-utility/cmd/status"
 	"github.com/heathcliff26/gh-utility/cmd/token"
 	"github.com/heathcliff26/gh-utility/pkg/version"
 	"github.com/spf13/cobra"
@@ -26,10 +27,12 @@ func NewRoot() *cobra.Command {
 		},
 	}
 
+	// Register subcommands, keep the list alphabetically sorted
 	rootCmd.AddCommand(
 		clone.NewCommand(),
 		commit.NewCommand(),
 		pr.NewCommand(),
+		status.NewCommand(),
 		token.NewCommand(),
 		version.NewCommand(Name),
 	)

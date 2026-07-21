@@ -388,6 +388,131 @@ func (c *Client) AddLabels(token string, repo string, pr int, labels []string) e
 	return nil
 }
 
+// Create a check run for the given commit.
+// API endpoint: POST /repos/{owner}/{repo}/check-runs
+// Parameters:
+// - token: The GitHub app installation token
+// - repo: The repository name in the format "owner/repo".
+// - name: Name of the check run
+// - commit: The commit SHA
+// - description: Description for the check run output
+// - detailsURL: URL for the check run details
+// - status: Tekton or GitHub status string to translate
+// Returns:
+// - An error if any occurred
+func (c *Client) CreateCheckRun(token, repo, name, commit, description, detailsURL, status string) error {
+	status, conclusion, err := translateCheckRunStatus(status)
+	if err != nil {
+		return err
+	}
+
+	checkRun := &CheckRun{
+		Name:       name,
+		HeadSHA:    commit,
+		Status:     status,
+		Conclusion: conclusion,
+		DetailsURL: detailsURL,
+	}
+
+	if description != "" {
+		checkRun.Output = &CheckRunOutput{
+			Title:   name,
+			Summary: description,
+		}
+	}
+
+	req, err := newRequest(http.MethodPost, fmt.Sprintf("%s/repos/%s/check-runs", c.endpoint, repo), checkRun, token)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	err = c.do(req, http.StatusCreated, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create check-run: %w", err)
+	}
+	return nil
+}
+
+// Update an existing check run.
+// API endpoint: PATCH /repos/{owner}/{repo}/check-runs/{check_run_id}
+// Parameters:
+// - token: The GitHub app installation token
+// - repo: The repository name in the format "owner/repo".
+// - id: The ID of the check run to update
+// - name: Name of the check run
+// - commit: The commit SHA
+// - description: Description for the check run output
+// - detailsURL: URL for the check run details
+// - status: Tekton or GitHub status string to translate
+// Returns:
+// - An error if any occurred
+func (c *Client) UpdateCheckRun(token, repo string, id int, name, commit, description, detailsURL, status string) error {
+	status, conclusion, err := translateCheckRunStatus(status)
+	if err != nil {
+		return err
+	}
+
+	checkRun := &CheckRun{
+		ID:         id,
+		Name:       name,
+		HeadSHA:    commit,
+		Status:     status,
+		Conclusion: conclusion,
+		DetailsURL: detailsURL,
+	}
+
+	if description != "" {
+		checkRun.Output = &CheckRunOutput{
+			Title:   name,
+			Summary: description,
+		}
+	}
+
+	req, err := newRequest(http.MethodPatch, fmt.Sprintf("%s/repos/%s/check-runs/%d", c.endpoint, repo, id), checkRun, token)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	err = c.do(req, http.StatusOK, nil)
+	if err != nil {
+		return fmt.Errorf("failed to update check-run: %w", err)
+	}
+	return nil
+}
+
+// Get check runs for a commit.
+// API endpoint: GET /repos/{owner}/{repo}/commits/{ref}/check-runs
+// Parameters:
+// - token: The GitHub app installation token
+// - repo: The repository name in the format "owner/repo".
+// - ref: The commit SHA or branch name
+// Returns:
+// - List of check runs for the commit
+// - An error if any occurred
+func (c *Client) GetCheckRunsForCommit(token, repo, ref string) ([]CheckRun, error) {
+	req, err := newRequest(http.MethodGet, fmt.Sprintf("%s/repos/%s/commits/%s/check-runs", c.endpoint, repo, ref), nil, token)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	var res CheckRunsListResponse
+	err = c.do(req, http.StatusOK, &res)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list check-runs: %w", err)
+	}
+	return res.CheckRuns, nil
+}
+
+// Check whether the check-run already exists in the provided list and call create or update accordingly
+func (c *Client) SetCheckRunStatus(token, repo, name, commit, description, detailsURL, status string, checkRuns []CheckRun) error {
+	for _, checkRun := range checkRuns {
+		if checkRun.Name == name {
+			return c.UpdateCheckRun(token, repo, checkRun.ID, name, commit, description, detailsURL, status)
+		}
+	}
+	return c.CreateCheckRun(token, repo, name, commit, description, detailsURL, status)
+}
+
 // Send the given http request and parse the returned result
 func (c *Client) do(req *http.Request, status int, v any) error {
 	// #nosec G704 -- Endpoint should be user controlled, actual Paths are hardcoded

@@ -1,0 +1,30 @@
+---
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+
+version: 2
+
+project_name: gh-utility
+
+env:
+  - CGO_ENABLED=0
+
+builds:
+  - binary: "{{ .ProjectName }}"
+    main: ./cmd
+    goos:
+      - linux
+    goarch:
+      - arm64
+      - amd64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s
+
+archives:
+  - formats: ["binary"]
+
+changelog:
+  disable: true
+release:
+  disable: true

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func newRequest(method string, url string, body any, token string) (req *http.Request, err error) {
@@ -70,4 +71,33 @@ func fileToTreeObject(baseDir, path string) (*TreeObject, error) {
 	obj.Content = string(buf)
 
 	return obj, nil
+}
+
+// Convert the raw status to status and conclusion pair.
+func translateCheckRunStatus(status string) (string, string, error) {
+	lower := strings.ToLower(status)
+	switch lower {
+	case "succeeded", "success":
+		return "completed", "success", nil
+	case "failed", "failure":
+		return "completed", "failure", nil
+	case "skipped", "none":
+		return "completed", "skipped", nil
+	case "cancelled":
+		return "completed", "cancelled", nil
+	case "neutral":
+		return "completed", "neutral", nil
+	case "timed_out", "timeout":
+		return "completed", "timed_out", nil
+	case "action_required":
+		return "completed", "action_required", nil
+	case "stale":
+		return "completed", "stale", nil
+	case "running", "in_progress":
+		return "in_progress", "", nil
+	case "pending", "queued":
+		return "queued", "", nil
+	default:
+		return "", "", fmt.Errorf("unknown status '%s'", status)
+	}
 }

@@ -695,3 +695,233 @@ func TestAddLabels(t *testing.T) {
 		assert.Error(err, "Should fail")
 	})
 }
+
+func TestCreateCheckRun(t *testing.T) {
+	token, repo, name, commit, description, detailsURL, status := "testtoken", "test/repo", "ci/test", "abcde", "This is a test status", "http://example.com", "success"
+
+	newServer := func(t *testing.T, httpStatus int) *httptest.Server {
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert := assert.New(t)
+
+			assert.Equal(http.MethodPost, r.Method, "Should use POST method")
+			assert.Equal("/repos/test/repo/check-runs", r.URL.Path, "Should use correct path")
+			assert.NotEmpty(r.Header.Get("Accept"), "Should set Accept header")
+
+			var req CheckRun
+			err := json.NewDecoder(r.Body).Decode(&req)
+			assert.NoError(err, "Should decode request")
+
+			assert.Equal(name, req.Name, "Should have correct name")
+			assert.Equal(commit, req.HeadSHA, "Should have correct commit")
+			assert.Equal(description, req.Output.Summary, "Should have correct description")
+			assert.Equal(detailsURL, req.DetailsURL, "Should have correct details URL")
+			assert.Equal("completed", req.Status, "Should have correct status")
+			assert.Equal(status, req.Conclusion, "Should have correct conclusion")
+
+			w.WriteHeader(httpStatus)
+		}))
+	}
+
+	t.Run("Success", func(t *testing.T) {
+		assert := assert.New(t)
+
+		s := newServer(t, http.StatusCreated)
+		defer s.Close()
+
+		client := NewClient(s.URL)
+
+		err := client.CreateCheckRun(token, repo, name, commit, description, detailsURL, status)
+		assert.NoError(err, "Should create PR")
+	})
+	t.Run("Failure", func(t *testing.T) {
+		assert := assert.New(t)
+
+		s := newServer(t, http.StatusInternalServerError)
+		defer s.Close()
+
+		client := NewClient(s.URL)
+
+		err := client.CreateCheckRun(token, repo, name, commit, description, detailsURL, status)
+		assert.Error(err, "Should fail")
+	})
+}
+
+func TestUpdateCheckRun(t *testing.T) {
+	token, repo, name, commit, description, detailsURL, status := "testtoken", "test/repo", "ci/test", "abcde", "This is a test status", "http://example.com", "success"
+	id := 1234
+
+	newServer := func(t *testing.T, httpStatus int) *httptest.Server {
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert := assert.New(t)
+
+			assert.Equal(http.MethodPatch, r.Method, "Should use PATCH method")
+			assert.Equal("/repos/test/repo/check-runs/1234", r.URL.Path, "Should use correct path")
+			assert.NotEmpty(r.Header.Get("Accept"), "Should set Accept header")
+
+			var req CheckRun
+			err := json.NewDecoder(r.Body).Decode(&req)
+			assert.NoError(err, "Should decode request")
+
+			assert.Equal(name, req.Name, "Should have correct name")
+			assert.Equal(commit, req.HeadSHA, "Should have correct commit")
+			assert.Equal(description, req.Output.Summary, "Should have correct description")
+			assert.Equal(detailsURL, req.DetailsURL, "Should have correct details URL")
+			assert.Equal("completed", req.Status, "Should have correct status")
+			assert.Equal(status, req.Conclusion, "Should have correct conclusion")
+			assert.Equal(id, req.ID, "Should have correct external ID")
+
+			w.WriteHeader(httpStatus)
+		}))
+	}
+
+	t.Run("Success", func(t *testing.T) {
+		assert := assert.New(t)
+
+		s := newServer(t, http.StatusOK)
+		defer s.Close()
+
+		client := NewClient(s.URL)
+
+		err := client.UpdateCheckRun(token, repo, id, name, commit, description, detailsURL, status)
+		assert.NoError(err, "Should create PR")
+	})
+	t.Run("Failure", func(t *testing.T) {
+		assert := assert.New(t)
+
+		s := newServer(t, http.StatusInternalServerError)
+		defer s.Close()
+
+		client := NewClient(s.URL)
+
+		err := client.UpdateCheckRun(token, repo, id, name, commit, description, detailsURL, status)
+		assert.Error(err, "Should fail")
+	})
+}
+
+func TestCheckRunsForCommit(t *testing.T) {
+	token, repo, commit := "testtoken", "test/repo", "abcde"
+	checkRun := CheckRun{
+		ID:      1234,
+		Name:    "ci/test",
+		HeadSHA: commit,
+	}
+
+	newServer := func(t *testing.T, status int) *httptest.Server {
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert := assert.New(t)
+
+			assert.Equal(http.MethodGet, r.Method, "Should use GET method")
+			assert.Equal("/repos/test/repo/commits/abcde/check-runs", r.URL.Path, "Should use correct path")
+			assert.NotEmpty(r.Header.Get("Accept"), "Should set Accept header")
+
+			w.WriteHeader(status)
+			err := json.NewEncoder(w).Encode(CheckRunsListResponse{
+				TotalCount: 1,
+				CheckRuns:  []CheckRun{checkRun},
+			})
+			assert.NoError(err, "Should encode response")
+		}))
+	}
+
+	t.Run("Success", func(t *testing.T) {
+		assert := assert.New(t)
+
+		s := newServer(t, http.StatusOK)
+		defer s.Close()
+
+		client := NewClient(s.URL)
+
+		res, err := client.GetCheckRunsForCommit(token, repo, commit)
+		assert.NoError(err, "Should create PR")
+		assert.Len(res, 1, "Should have one check-run")
+		assert.Equal(checkRun, res[0], "Should return check-run")
+	})
+	t.Run("Failure", func(t *testing.T) {
+		assert := assert.New(t)
+
+		s := newServer(t, http.StatusInternalServerError)
+		defer s.Close()
+
+		client := NewClient(s.URL)
+
+		_, err := client.GetCheckRunsForCommit(token, repo, commit)
+		assert.Error(err, "Should fail")
+	})
+}
+
+func TestSetCheckRunStatus(t *testing.T) {
+	var expectedEndpoint int
+
+	token, repo, name, commit, description, detailsURL, status := "testtoken", "test/repo", "ci/test", "abcde", "This is a test status", "http://example.com", "success"
+	id := 1234
+
+	checkRuns := []CheckRun{
+		{ID: 1, Name: "ci/t1", HeadSHA: commit},
+		{ID: 2, Name: "ci/t2", HeadSHA: commit},
+	}
+
+	newServer := func(t *testing.T) *httptest.Server {
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert := assert.New(t)
+
+			assert.NotEmpty(r.Header.Get("Accept"), "Should set Accept header")
+
+			var req CheckRun
+			err := json.NewDecoder(r.Body).Decode(&req)
+			assert.NoError(err, "Should decode request")
+
+			assert.Equal(name, req.Name, "Should have correct name")
+			assert.Equal(commit, req.HeadSHA, "Should have correct commit")
+			assert.Equal(description, req.Output.Summary, "Should have correct description")
+			assert.Equal(detailsURL, req.DetailsURL, "Should have correct details URL")
+			assert.Equal("completed", req.Status, "Should have correct status")
+			assert.Equal(status, req.Conclusion, "Should have correct conclusion")
+
+			switch expectedEndpoint {
+			case 0:
+				assert.Equal(http.MethodPost, r.Method, "Should use POST method")
+				assert.Equal("/repos/test/repo/check-runs", r.URL.Path, "Should use correct path")
+
+				w.WriteHeader(http.StatusCreated)
+			case 1:
+				assert.Equal(http.MethodPatch, r.Method, "Should use PATCH method")
+				assert.Equal("/repos/test/repo/check-runs/1234", r.URL.Path, "Should use correct path")
+
+				assert.Equal(id, req.ID, "Should have correct external ID")
+
+				w.WriteHeader(http.StatusOK)
+			default:
+				t.Fatal("Unexpected endpoint")
+			}
+		}))
+	}
+
+	t.Run("Create", func(t *testing.T) {
+		assert := assert.New(t)
+
+		expectedEndpoint = 0
+
+		s := newServer(t)
+		defer s.Close()
+
+		client := NewClient(s.URL)
+
+		err := client.SetCheckRunStatus(token, repo, name, commit, description, detailsURL, status, checkRuns)
+		assert.NoError(err, "Should create PR")
+	})
+	t.Run("Update", func(t *testing.T) {
+		assert := assert.New(t)
+
+		expectedEndpoint = 1
+
+		s := newServer(t)
+		defer s.Close()
+
+		client := NewClient(s.URL)
+
+		checkRuns := append(checkRuns, CheckRun{ID: id, Name: name, HeadSHA: commit})
+
+		err := client.SetCheckRunStatus(token, repo, name, commit, description, detailsURL, status, checkRuns)
+		assert.NoError(err, "Should update PR")
+	})
+}

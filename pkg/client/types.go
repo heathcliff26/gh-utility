@@ -112,3 +112,23 @@ type LabelRequest struct {
 type Label struct {
 	Name string `json:"name"`
 }
+
+type CheckRunOutput struct {
+	Title   string `json:"title,omitempty"`
+	Summary string `json:"summary,omitempty"`
+}
+
+type CheckRun struct {
+	ID         int             `json:"id,omitempty"`
+	Name       string          `json:"name"`
+	HeadSHA    string          `json:"head_sha"`
+	Status     string          `json:"status,omitempty"`
+	Conclusion string          `json:"conclusion,omitempty"`
+	Output     *CheckRunOutput `json:"output,omitempty"`
+	DetailsURL string          `json:"details_url,omitempty"`
+}
+
+type CheckRunsListResponse struct {
+	TotalCount int        `json:"total_count"`
+	CheckRuns  []CheckRun `json:"check_runs"`
+}

@@ -69,3 +69,47 @@ func TestFileToTreeObject(t *testing.T) {
 		assert.True(obj.DeleteFile, "Should mark file for deletion")
 	})
 }
+
+func TestTranslateCheckRunStatus(t *testing.T) {
+	tMatrix := []struct {
+		Name        string
+		Status      string
+		Expected    string
+		Conclusion  string
+		ExpectError bool
+	}{
+		{"Succeeded", "succeeded", "completed", "success", false},
+		{"Success", "success", "completed", "success", false},
+		{"Failed", "failed", "completed", "failure", false},
+		{"Failure", "failure", "completed", "failure", false},
+		{"Skipped", "skipped", "completed", "skipped", false},
+		{"TektonSkipped", "none", "completed", "skipped", false},
+		{"Cancelled", "cancelled", "completed", "cancelled", false},
+		{"Neutral", "neutral", "completed", "neutral", false},
+		{"TimedOut", "timed_out", "completed", "timed_out", false},
+		{"Timeout", "timeout", "completed", "timed_out", false},
+		{"ActionRequired", "action_required", "completed", "action_required", false},
+		{"Stale", "stale", "completed", "stale", false},
+		{"Running", "running", "in_progress", "", false},
+		{"InProgress", "in_progress", "in_progress", "", false},
+		{"Pending", "pending", "queued", "", false},
+		{"Queued", "queued", "queued", "", false},
+		{"UnknownStatus", "unknown_status", "", "", true},
+	}
+
+	for _, tCase := range tMatrix {
+		t.Run(tCase.Name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			status, conclusion, err := translateCheckRunStatus(tCase.Status)
+			if tCase.ExpectError {
+				assert.Error(err, "Should return error for unknown status")
+				assert.Contains(err.Error(), "unknown status", "Should contain expected error text")
+			} else {
+				assert.NoError(err, "Should not return error")
+				assert.Equal(tCase.Expected, status, "Should have correct status")
+				assert.Equal(tCase.Conclusion, conclusion, "Should have correct conclusion")
+			}
+		})
+	}
+}

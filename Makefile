@@ -12,6 +12,10 @@ build:
 image:
 	podman build -t $(REPOSITORY)/$(CONTAINER_NAME):$(TAG) .
 
+# Build all artifacts used for release, except the container images
+release:
+	hack/release.sh
+
 # Run unit-tests
 test:
 	go test -v -coverprofile=coverprofile.out ./cmd/... ./pkg/...
@@ -56,6 +60,7 @@ help:
 	default \
 	build \
 	image \
+	release \
 	test \
 	update-deps \
 	coverprofile \

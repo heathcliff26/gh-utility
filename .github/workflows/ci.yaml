@@ -76,6 +76,20 @@ jobs:
       cache: false
       cmd: "make validate"
 
+  build-binary:
+    uses: heathcliff26/ci/.github/workflows/golang-build.yaml@main
+    permissions:
+      contents: read
+    needs:
+      - lint
+      - unit-tests
+    with:
+      release: "${{ github.event_name == 'pull_request' && 'devel' || inputs.tag == '' && 'rolling' || inputs.tag }}"
+      artifact: "dist/gh-utility*"
+      artifact-name: "gh-utility"
+      cmd: "make release"
+    secrets: inherit
+
   build-image:
     uses: heathcliff26/ci/.github/workflows/build-container.yaml@main
     needs:

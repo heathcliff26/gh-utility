@@ -42,7 +42,6 @@ func TestRun(t *testing.T) {
 				assert.Equal("Test Description", req.Output.Summary, "Should have correct output summary")
 
 				w.WriteHeader(http.StatusCreated)
-				_, _ = w.Write([]byte(`{"id":1,"head_sha":"commit-sha","name":"check-name","node_id":"node","status":"completed","conclusion":"success"}`))
 			default:
 				t.Fatalf("unexpected request %d", requestCount)
 			}
@@ -96,7 +95,6 @@ func TestRun(t *testing.T) {
 				assert.Equal("failure", req.Conclusion, "Should have translated conclusion")
 
 				w.WriteHeader(http.StatusOK)
-				_, _ = w.Write([]byte(`{"id":42,"head_sha":"commit-sha","name":"existing-check","node_id":"node","status":"completed","conclusion":"failure"}`))
 			default:
 				t.Fatalf("unexpected request %d", requestCount)
 			}
@@ -144,7 +142,6 @@ func TestRun(t *testing.T) {
 				assert.Equal("in_progress", req.Status)
 
 				w.WriteHeader(http.StatusCreated)
-				_, _ = w.Write([]byte(`{"id":1,"head_sha":"commit-sha","name":"check-1","node_id":"node","status":"in_progress","conclusion":""}`))
 			case 2:
 				assert.Equal(http.MethodPost, r.Method, "Should create check-2")
 				var req client.CheckRun
@@ -154,7 +151,6 @@ func TestRun(t *testing.T) {
 				assert.Equal("queued", req.Status)
 
 				w.WriteHeader(http.StatusCreated)
-				_, _ = w.Write([]byte(`{"id":2,"head_sha":"commit-sha","name":"check-2","node_id":"node","status":"queued","conclusion":""}`))
 			case 3:
 				assert.Equal(http.MethodPost, r.Method, "Should create check-3")
 				var req client.CheckRun
@@ -165,7 +161,6 @@ func TestRun(t *testing.T) {
 				assert.Equal("failure", req.Conclusion)
 
 				w.WriteHeader(http.StatusCreated)
-				_, _ = w.Write([]byte(`{"id":3,"head_sha":"commit-sha","name":"check-3","node_id":"node","status":"completed","conclusion":"failure"}`))
 			default:
 				t.Fatalf("unexpected request %d", requestCount)
 			}
@@ -259,7 +254,6 @@ func TestRun(t *testing.T) {
 			case 0:
 				assert.Equal(http.MethodGet, r.Method, "Should list check runs")
 				w.WriteHeader(http.StatusBadRequest)
-				_, _ = w.Write([]byte(`{"message":"Bad Request"}`))
 			default:
 				t.Fatalf("unexpected request %d", requestCount)
 			}

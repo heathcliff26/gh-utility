@@ -65,21 +65,23 @@
 				
 				<option value="file4">github.com/heathcliff26/gh-utility/cmd/pr/cmd.go (77.8%)</option>
 				
-				<option value="file5">github.com/heathcliff26/gh-utility/cmd/token/cmd.go (76.9%)</option>
+				<option value="file5">github.com/heathcliff26/gh-utility/cmd/status/cmd.go (81.6%)</option>
 				
-				<option value="file6">github.com/heathcliff26/gh-utility/pkg/client/client.go (90.1%)</option>
+				<option value="file6">github.com/heathcliff26/gh-utility/cmd/token/cmd.go (76.9%)</option>
 				
-				<option value="file7">github.com/heathcliff26/gh-utility/pkg/client/types.go (100.0%)</option>
+				<option value="file7">github.com/heathcliff26/gh-utility/pkg/client/client.go (89.4%)</option>
 				
-				<option value="file8">github.com/heathcliff26/gh-utility/pkg/client/utils.go (80.6%)</option>
+				<option value="file8">github.com/heathcliff26/gh-utility/pkg/client/types.go (100.0%)</option>
 				
-				<option value="file9">github.com/heathcliff26/gh-utility/pkg/git/git.go (93.0%)</option>
+				<option value="file9">github.com/heathcliff26/gh-utility/pkg/client/utils.go (85.7%)</option>
 				
-				<option value="file10">github.com/heathcliff26/gh-utility/pkg/pullrequest/pr.go (73.6%)</option>
+				<option value="file10">github.com/heathcliff26/gh-utility/pkg/git/git.go (93.0%)</option>
 				
-				<option value="file11">github.com/heathcliff26/gh-utility/pkg/utils/utils.go (100.0%)</option>
+				<option value="file11">github.com/heathcliff26/gh-utility/pkg/pullrequest/pr.go (73.6%)</option>
 				
-				<option value="file12">github.com/heathcliff26/gh-utility/pkg/version/version.go (90.0%)</option>
+				<option value="file12">github.com/heathcliff26/gh-utility/pkg/utils/utils.go (100.0%)</option>
+				
+				<option value="file13">github.com/heathcliff26/gh-utility/pkg/version/version.go (90.0%)</option>
 				
 				</select>
 			</div>
@@ -148,6 +150,7 @@ import (
         "github.com/heathcliff26/gh-utility/cmd/clone"
         "github.com/heathcliff26/gh-utility/cmd/commit"
         "github.com/heathcliff26/gh-utility/cmd/pr"
+        "github.com/heathcliff26/gh-utility/cmd/status"
         "github.com/heathcliff26/gh-utility/cmd/token"
         "github.com/heathcliff26/gh-utility/pkg/version"
         "github.com/spf13/cobra"
@@ -170,10 +173,12 @@ func NewRoot() *cobra.Command <span class="cov8" title="1">{
                 }</span>,
         }
 
+        // Register subcommands, keep the list alphabetically sorted
         <span class="cov8" title="1">rootCmd.AddCommand(
                 clone.NewCommand(),
                 commit.NewCommand(),
                 pr.NewCommand(),
+                status.NewCommand(),
                 token.NewCommand(),
                 version.NewCommand(Name),
         )
@@ -388,7 +393,94 @@ func run(cmd *cobra.Command) error <span class="cov8" title="1">{
 }
 </pre>
 		
-		<pre class="file" id="file5" style="display: none">package token
+		<pre class="file" id="file5" style="display: none">package status
+
+import (
+        "fmt"
+        "os"
+        "strings"
+
+        "github.com/heathcliff26/gh-utility/pkg/client"
+        "github.com/heathcliff26/gh-utility/pkg/utils"
+        "github.com/spf13/cobra"
+)
+
+const (
+        endpointFlag    = "endpoint"
+        descriptionFlag = "description"
+        urlFlag         = "url"
+)
+
+func NewCommand() *cobra.Command <span class="cov8" title="1">{
+        cmd := &amp;cobra.Command{
+                Use:   "status [flags] &lt;repository&gt; &lt;commit&gt; &lt;check-name&gt;=&lt;status&gt; [&lt;check-name&gt;=&lt;status&gt;...]",
+                Short: "Set or update the status of GitHub check runs on commits",
+                Args:  cobra.MinimumNArgs(3),
+                Run: func(cmd *cobra.Command, args []string) </span><span class="cov0" title="0">{
+                        err := run(cmd, args)
+                        if err != nil </span><span class="cov0" title="0">{
+                                cmd.PrintErrln(cmd.ErrPrefix(), err)
+                                os.Exit(1)
+                        }</span>
+                },
+        }
+
+        <span class="cov8" title="1">cmd.Flags().StringP(endpointFlag, "e", client.DefaultEndpoint, "GitHub API endpoint")
+        cmd.Flags().StringP(descriptionFlag, "d", "", "Description for the status check(s)")
+        cmd.Flags().StringP(urlFlag, "u", "", "URL for the status check(s)")
+
+        return cmd</span>
+}
+
+func run(cmd *cobra.Command, args []string) error <span class="cov8" title="1">{
+        endpoint, err := cmd.Flags().GetString(endpointFlag)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">description, err := cmd.Flags().GetString(descriptionFlag)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">detailsURL, err := cmd.Flags().GetString(urlFlag)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">repo := args[0]
+        commit := args[1]
+        checkPairs := args[2:]
+
+        token := utils.GetToken()
+        c := client.NewClient(endpoint)
+
+        checks := make(map[string]string, len(checkPairs))
+        for _, check := range checkPairs </span><span class="cov8" title="1">{
+                parts := strings.SplitN(check, "=", 2)
+                if len(parts) != 2 </span><span class="cov8" title="1">{
+                        return fmt.Errorf("invalid check format '%s', expected &lt;check-name&gt;=&lt;status&gt;", check)
+                }</span>
+                <span class="cov8" title="1">checks[parts[0]] = parts[1]</span>
+        }
+
+        <span class="cov8" title="1">checkRuns, err := c.GetCheckRunsForCommit(token, repo, commit)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to get check runs for commit: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">for name, status := range checks </span><span class="cov8" title="1">{
+                err = c.SetCheckRunStatus(token, repo, name, commit, description, detailsURL, status, checkRuns)
+                if err != nil </span><span class="cov8" title="1">{
+                        return fmt.Errorf("failed to set check run '%s': %w", name, err)
+                }</span>
+
+                <span class="cov8" title="1">cmd.Printf("Check run '%s' set to '%s'\n", name, status)</span>
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package token
 
 import (
         "os"
@@ -475,7 +567,7 @@ func run(cmd *cobra.Command) error <span class="cov8" title="1">{
 }
 </pre>
 		
-		<pre class="file" id="file6" style="display: none">package client
+		<pre class="file" id="file7" style="display: none">package client
 
 import (
         "encoding/json"
@@ -865,6 +957,131 @@ func (c *Client) AddLabels(token string, repo string, pr int, labels []string) e
         <span class="cov8" title="1">return nil</span>
 }
 
+// Create a check run for the given commit.
+// API endpoint: POST /repos/{owner}/{repo}/check-runs
+// Parameters:
+// - token: The GitHub app installation token
+// - repo: The repository name in the format "owner/repo".
+// - name: Name of the check run
+// - commit: The commit SHA
+// - description: Description for the check run output
+// - detailsURL: URL for the check run details
+// - status: Tekton or GitHub status string to translate
+// Returns:
+// - An error if any occurred
+func (c *Client) CreateCheckRun(token, repo, name, commit, description, detailsURL, status string) error <span class="cov8" title="1">{
+        status, conclusion, err := translateCheckRunStatus(status)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">checkRun := &amp;CheckRun{
+                Name:       name,
+                HeadSHA:    commit,
+                Status:     status,
+                Conclusion: conclusion,
+                DetailsURL: detailsURL,
+        }
+
+        if description != "" </span><span class="cov8" title="1">{
+                checkRun.Output = &amp;CheckRunOutput{
+                        Title:   name,
+                        Summary: description,
+                }
+        }</span>
+
+        <span class="cov8" title="1">req, err := newRequest(http.MethodPost, fmt.Sprintf("%s/repos/%s/check-runs", c.endpoint, repo), checkRun, token)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create request: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">err = c.do(req, http.StatusCreated, nil)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to create check-run: %w", err)
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+// Update an existing check run.
+// API endpoint: PATCH /repos/{owner}/{repo}/check-runs/{check_run_id}
+// Parameters:
+// - token: The GitHub app installation token
+// - repo: The repository name in the format "owner/repo".
+// - id: The ID of the check run to update
+// - name: Name of the check run
+// - commit: The commit SHA
+// - description: Description for the check run output
+// - detailsURL: URL for the check run details
+// - status: Tekton or GitHub status string to translate
+// Returns:
+// - An error if any occurred
+func (c *Client) UpdateCheckRun(token, repo string, id int, name, commit, description, detailsURL, status string) error <span class="cov8" title="1">{
+        status, conclusion, err := translateCheckRunStatus(status)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">checkRun := &amp;CheckRun{
+                ID:         id,
+                Name:       name,
+                HeadSHA:    commit,
+                Status:     status,
+                Conclusion: conclusion,
+                DetailsURL: detailsURL,
+        }
+
+        if description != "" </span><span class="cov8" title="1">{
+                checkRun.Output = &amp;CheckRunOutput{
+                        Title:   name,
+                        Summary: description,
+                }
+        }</span>
+
+        <span class="cov8" title="1">req, err := newRequest(http.MethodPatch, fmt.Sprintf("%s/repos/%s/check-runs/%d", c.endpoint, repo, id), checkRun, token)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create request: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">err = c.do(req, http.StatusOK, nil)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to update check-run: %w", err)
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+// Get check runs for a commit.
+// API endpoint: GET /repos/{owner}/{repo}/commits/{ref}/check-runs
+// Parameters:
+// - token: The GitHub app installation token
+// - repo: The repository name in the format "owner/repo".
+// - ref: The commit SHA or branch name
+// Returns:
+// - List of check runs for the commit
+// - An error if any occurred
+func (c *Client) GetCheckRunsForCommit(token, repo, ref string) ([]CheckRun, error) <span class="cov8" title="1">{
+        req, err := newRequest(http.MethodGet, fmt.Sprintf("%s/repos/%s/commits/%s/check-runs", c.endpoint, repo, ref), nil, token)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create request: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">var res CheckRunsListResponse
+        err = c.do(req, http.StatusOK, &amp;res)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to list check-runs: %w", err)
+        }</span>
+        <span class="cov8" title="1">return res.CheckRuns, nil</span>
+}
+
+// Check whether the check-run already exists in the provided list and call create or update accordingly
+func (c *Client) SetCheckRunStatus(token, repo, name, commit, description, detailsURL, status string, checkRuns []CheckRun) error <span class="cov8" title="1">{
+        for _, checkRun := range checkRuns </span><span class="cov8" title="1">{
+                if checkRun.Name == name </span><span class="cov8" title="1">{
+                        return c.UpdateCheckRun(token, repo, checkRun.ID, name, commit, description, detailsURL, status)
+                }</span>
+        }
+        <span class="cov8" title="1">return c.CreateCheckRun(token, repo, name, commit, description, detailsURL, status)</span>
+}
+
 // Send the given http request and parse the returned result
 func (c *Client) do(req *http.Request, status int, v any) error <span class="cov8" title="1">{
         // #nosec G704 -- Endpoint should be user controlled, actual Paths are hardcoded
@@ -892,7 +1109,7 @@ func (c *Client) do(req *http.Request, status int, v any) error <span class="cov
 }
 </pre>
 		
-		<pre class="file" id="file7" style="display: none">package client
+		<pre class="file" id="file8" style="display: none">package client
 
 import "encoding/json"
 
@@ -1006,9 +1223,29 @@ type LabelRequest struct {
 type Label struct {
         Name string `json:"name"`
 }
+
+type CheckRunOutput struct {
+        Title   string `json:"title,omitempty"`
+        Summary string `json:"summary,omitempty"`
+}
+
+type CheckRun struct {
+        ID         int             `json:"id,omitempty"`
+        Name       string          `json:"name"`
+        HeadSHA    string          `json:"head_sha"`
+        Status     string          `json:"status,omitempty"`
+        Conclusion string          `json:"conclusion,omitempty"`
+        Output     *CheckRunOutput `json:"output,omitempty"`
+        DetailsURL string          `json:"details_url,omitempty"`
+}
+
+type CheckRunsListResponse struct {
+        TotalCount int        `json:"total_count"`
+        CheckRuns  []CheckRun `json:"check_runs"`
+}
 </pre>
 		
-		<pre class="file" id="file8" style="display: none">package client
+		<pre class="file" id="file9" style="display: none">package client
 
 import (
         "bytes"
@@ -1019,6 +1256,7 @@ import (
         "net/http"
         "os"
         "path/filepath"
+        "strings"
 )
 
 func newRequest(method string, url string, body any, token string) (req *http.Request, err error) <span class="cov8" title="1">{
@@ -1081,9 +1319,38 @@ func fileToTreeObject(baseDir, path string) (*TreeObject, error) <span class="co
 
         return obj, nil</span>
 }
+
+// Convert the raw status to status and conclusion pair.
+func translateCheckRunStatus(status string) (string, string, error) <span class="cov8" title="1">{
+        lower := strings.ToLower(status)
+        switch lower </span>{
+        case "succeeded", "success":<span class="cov8" title="1">
+                return "completed", "success", nil</span>
+        case "failed", "failure":<span class="cov8" title="1">
+                return "completed", "failure", nil</span>
+        case "skipped", "none":<span class="cov8" title="1">
+                return "completed", "skipped", nil</span>
+        case "cancelled":<span class="cov8" title="1">
+                return "completed", "cancelled", nil</span>
+        case "neutral":<span class="cov8" title="1">
+                return "completed", "neutral", nil</span>
+        case "timed_out", "timeout":<span class="cov8" title="1">
+                return "completed", "timed_out", nil</span>
+        case "action_required":<span class="cov8" title="1">
+                return "completed", "action_required", nil</span>
+        case "stale":<span class="cov8" title="1">
+                return "completed", "stale", nil</span>
+        case "running", "in_progress":<span class="cov8" title="1">
+                return "in_progress", "", nil</span>
+        case "pending", "queued":<span class="cov8" title="1">
+                return "queued", "", nil</span>
+        default:<span class="cov8" title="1">
+                return "", "", fmt.Errorf("unknown status '%s'", status)</span>
+        }
+}
 </pre>
 		
-		<pre class="file" id="file9" style="display: none">package git
+		<pre class="file" id="file10" style="display: none">package git
 
 import (
         "fmt"
@@ -1221,7 +1488,7 @@ func (r *Repository) CurrentBranch() (string, error) <span class="cov8" title="1
 }
 </pre>
 		
-		<pre class="file" id="file10" style="display: none">package pullrequest
+		<pre class="file" id="file11" style="display: none">package pullrequest
 
 import (
         "fmt"
@@ -1329,7 +1596,7 @@ func hasMissingLabels(existing []client.Label, requested []string) bool <span cl
 }
 </pre>
 		
-		<pre class="file" id="file11" style="display: none">package utils
+		<pre class="file" id="file12" style="display: none">package utils
 
 import (
         "os"
@@ -1344,7 +1611,7 @@ func GetToken() string <span class="cov8" title="1">{
 }
 </pre>
 		
-		<pre class="file" id="file12" style="display: none">package version
+		<pre class="file" id="file13" style="display: none">package version
 
 import (
         "runtime"

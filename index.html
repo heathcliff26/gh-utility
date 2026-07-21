@@ -63,11 +63,11 @@
 				
 				<option value="file3">github.com/heathcliff26/gh-utility/cmd/main.go (0.0%)</option>
 				
-				<option value="file4">github.com/heathcliff26/gh-utility/cmd/pr/cmd.go (69.6%)</option>
+				<option value="file4">github.com/heathcliff26/gh-utility/cmd/pr/cmd.go (77.8%)</option>
 				
 				<option value="file5">github.com/heathcliff26/gh-utility/cmd/token/cmd.go (76.9%)</option>
 				
-				<option value="file6">github.com/heathcliff26/gh-utility/pkg/client/client.go (90.3%)</option>
+				<option value="file6">github.com/heathcliff26/gh-utility/pkg/client/client.go (90.1%)</option>
 				
 				<option value="file7">github.com/heathcliff26/gh-utility/pkg/client/types.go (100.0%)</option>
 				
@@ -75,7 +75,7 @@
 				
 				<option value="file9">github.com/heathcliff26/gh-utility/pkg/git/git.go (93.0%)</option>
 				
-				<option value="file10">github.com/heathcliff26/gh-utility/pkg/pullrequest/pr.go (67.5%)</option>
+				<option value="file10">github.com/heathcliff26/gh-utility/pkg/pullrequest/pr.go (73.6%)</option>
 				
 				<option value="file11">github.com/heathcliff26/gh-utility/pkg/utils/utils.go (100.0%)</option>
 				
@@ -348,14 +348,9 @@ func run(cmd *cobra.Command) error <span class="cov8" title="1">{
         if err != nil </span><span class="cov0" title="0">{
                 return err
         }</span>
-        // TODO: Add option to set labels for the PR
         <span class="cov8" title="1">labels, err := cmd.Flags().GetStringArray(labelFlag)
         if err != nil </span><span class="cov0" title="0">{
                 return err
-        }</span>
-        // TODO: Remove
-        <span class="cov8" title="1">if len(labels) &gt; 0 </span><span class="cov0" title="0">{
-                cmd.PrintErr("Warning: Labels are currently not supported, they will be ignored\n")
         }</span>
         <span class="cov8" title="1">endpoint, err := cmd.Flags().GetString(endpointFlag)
         if err != nil </span><span class="cov0" title="0">{
@@ -384,11 +379,11 @@ func run(cmd *cobra.Command) error <span class="cov8" title="1">{
                 return err
         }</span>
 
-        <span class="cov0" title="0">url, err := pullrequest.PullRequest(c, path, branch, title, body, token, labels)
+        <span class="cov8" title="1">url, err := pullrequest.PullRequest(c, path, branch, title, body, token, labels)
         if err != nil </span><span class="cov0" title="0">{
                 return err
         }</span>
-        <span class="cov0" title="0">cmd.Println(url)
+        <span class="cov8" title="1">cmd.Println(url)
         return nil</span>
 }
 </pre>
@@ -844,6 +839,32 @@ func (c *Client) CreateOrUpdatePullRequest(token, repo, title, body, head, base 
         <span class="cov8" title="1">return c.UpdatePullRequest(token, repo, pr.Number, title, body, base)</span>
 }
 
+// Add labels to a pull request.
+// API endpoint: POST /repos/{owner}/{repo}/issues/{pull_number}/labels
+// Parameters:
+// - token: The GitHub app installation token
+// - repo: The repository name in the format "owner/repo".
+// - pr: Number of the PR
+// - labels: List of label names to add
+// Returns:
+// - An error if any occurred
+func (c *Client) AddLabels(token string, repo string, pr int, labels []string) error <span class="cov8" title="1">{
+        labelReq := &amp;LabelRequest{
+                Labels: labels,
+        }
+
+        req, err := newRequest(http.MethodPost, fmt.Sprintf("%s/repos/%s/issues/%d/labels", c.endpoint, repo, pr), labelReq, token)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create request: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">err = c.do(req, http.StatusOK, nil)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to add labels: %w", err)
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
 // Send the given http request and parse the returned result
 func (c *Client) do(req *http.Request, status int, v any) error <span class="cov8" title="1">{
         // #nosec G704 -- Endpoint should be user controlled, actual Paths are hardcoded
@@ -960,13 +981,14 @@ type PrRequest struct {
 }
 
 type PrResponse struct {
-        Url     string `json:"url,omitempty"`
-        Id      int    `json:"id,omitempty"`
-        HtmlUrl string `json:"html_url,omitempty"`
-        Number  int    `json:"number,omitempty"`
-        State   string `json:"state,omitempty"`
-        Title   string `json:"title,omitempty"`
-        Body    string `json:"body,omitempty"`
+        Url     string  `json:"url,omitempty"`
+        Id      int     `json:"id,omitempty"`
+        HtmlUrl string  `json:"html_url,omitempty"`
+        Number  int     `json:"number,omitempty"`
+        State   string  `json:"state,omitempty"`
+        Title   string  `json:"title,omitempty"`
+        Body    string  `json:"body,omitempty"`
+        Labels  []Label `json:"labels,omitempty"`
         Head    struct {
                 Label string `json:"label,omitempty"`
                 Ref   string `json:"ref,omitempty"`
@@ -975,6 +997,14 @@ type PrResponse struct {
                 Label string `json:"label,omitempty"`
                 Ref   string `json:"ref,omitempty"`
         } `json:"base,omitzero"`
+}
+
+type LabelRequest struct {
+        Labels []string `json:"labels"`
+}
+
+type Label struct {
+        Name string `json:"name"`
 }
 </pre>
 		
@@ -1251,6 +1281,7 @@ func Commit(c *client.Client, dir, msg, branch, token string) (string, string, e
 
 // Check if a pull request already exists.
 // Create if not exists, update if exists.
+// Will add the given labels to the PR if they are not already present.
 // Returns a url to the pull request.
 func PullRequest(c *client.Client, dir, branch, title, body, token string, labels []string) (string, error) <span class="cov8" title="1">{
         repo, err := git.OpenRepository(dir)
@@ -1270,7 +1301,31 @@ func PullRequest(c *client.Client, dir, branch, title, body, token string, label
         if err != nil </span><span class="cov0" title="0">{
                 return "", err
         }</span>
+
+        <span class="cov8" title="1">if hasMissingLabels(pr.Labels, labels) </span><span class="cov8" title="1">{
+                err = c.AddLabels(token, remote, pr.Number, labels)
+                if err != nil </span><span class="cov0" title="0">{
+                        return pr.HtmlUrl, fmt.Errorf("failed to add labels: %w", err)
+                }</span>
+        }
+
         <span class="cov8" title="1">return pr.HtmlUrl, nil</span>
+}
+
+func hasMissingLabels(existing []client.Label, requested []string) bool <span class="cov8" title="1">{
+        for _, label := range requested </span><span class="cov8" title="1">{
+                found := false
+                for _, existingLabel := range existing </span><span class="cov8" title="1">{
+                        if existingLabel.Name == label </span><span class="cov8" title="1">{
+                                found = true
+                                break</span>
+                        }
+                }
+                <span class="cov8" title="1">if !found </span><span class="cov8" title="1">{
+                        return true
+                }</span>
+        }
+        <span class="cov8" title="1">return false</span>
 }
 </pre>
 		

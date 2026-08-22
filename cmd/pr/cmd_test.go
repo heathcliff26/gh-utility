@@ -2,7 +2,7 @@ package pr
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/v2"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -93,7 +93,7 @@ func TestRun(t *testing.T) {
 				assert.Equal("/repos/heathcliff26/gh-utility/git/trees", r.URL.Path, "Should use tree endpoint")
 
 				var req client.TreeRequest
-				err := json.NewDecoder(r.Body).Decode(&req)
+				err := json.UnmarshalRead(r.Body, &req)
 				assert.NoError(err, "Should decode tree request")
 				assert.Len(req.Tree, 1, "Should have 1 tree object")
 
@@ -126,7 +126,7 @@ func TestRun(t *testing.T) {
 				assert.Equal("/repos/heathcliff26/gh-utility/issues/1/labels", r.URL.Path, "Should use issues labels endpoint")
 
 				var labelReq client.LabelRequest
-				err := json.NewDecoder(r.Body).Decode(&labelReq)
+				err := json.UnmarshalRead(r.Body, &labelReq)
 				assert.NoError(err, "Should decode label request")
 				assert.Equal([]string{"bug", "enhancement"}, labelReq.Labels, "Should have correct labels")
 

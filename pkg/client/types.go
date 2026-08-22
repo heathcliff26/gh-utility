@@ -1,6 +1,6 @@
 package client
 
-import "encoding/json"
+import "encoding/json/v2"
 
 const (
 	treeModeFile = "100644"

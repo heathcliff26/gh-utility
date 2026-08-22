@@ -1,7 +1,7 @@
 package pullrequest
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -39,7 +39,7 @@ func TestCommit(t *testing.T) {
 				assert.Equal("/repos/heathcliff26/gh-utility/git/trees", r.URL.Path, "Should use tree endpoint")
 
 				var req client.TreeRequest
-				err := json.NewDecoder(r.Body).Decode(&req)
+				err := json.UnmarshalRead(r.Body, &req)
 				require.NoError(err, "Should decode tree request")
 				require.Len(req.Tree, 1, "Should have 1 tree object")
 				assert.Equal("new.txt", req.Tree[0].Path, "Should contain new file")
@@ -106,7 +106,7 @@ func TestPullRequest(t *testing.T) {
 				assert.Equal("/repos/heathcliff26/gh-utility/pulls", r.URL.Path, "Should use pulls endpoint")
 
 				var prReq client.PrRequest
-				require.NoError(json.NewDecoder(r.Body).Decode(&prReq), "Should decode pull request payload")
+				require.NoError(json.UnmarshalRead(r.Body, &prReq), "Should decode pull request payload")
 				assert.Equal("feature title", prReq.Title, "Should use supplied title")
 				assert.Equal("feature body", prReq.Body, "Should use supplied body")
 				assert.Equal("heathcliff26:feature", prReq.Head, "Should use supplied head branch")
@@ -159,7 +159,7 @@ func TestPullRequestWithLabels(t *testing.T) {
 				assert.Equal("/repos/heathcliff26/gh-utility/pulls", r.URL.Path, "Should use pulls endpoint")
 
 				var prReq client.PrRequest
-				require.NoError(json.NewDecoder(r.Body).Decode(&prReq), "Should decode pull request payload")
+				require.NoError(json.UnmarshalRead(r.Body, &prReq), "Should decode pull request payload")
 				assert.Equal("feature title", prReq.Title, "Should use supplied title")
 				assert.Equal("feature body", prReq.Body, "Should use supplied body")
 				assert.Equal("heathcliff26:feature", prReq.Head, "Should use supplied head branch")
@@ -172,7 +172,7 @@ func TestPullRequestWithLabels(t *testing.T) {
 				assert.Equal("/repos/heathcliff26/gh-utility/issues/1/labels", r.URL.Path, "Should use issues labels endpoint")
 
 				var labelReq client.LabelRequest
-				require.NoError(json.NewDecoder(r.Body).Decode(&labelReq), "Should decode label request")
+				require.NoError(json.UnmarshalRead(r.Body, &labelReq), "Should decode label request")
 				assert.Equal([]string{"bug", "enhancement"}, labelReq.Labels, "Should have correct labels")
 
 				w.WriteHeader(http.StatusOK)
@@ -225,7 +225,7 @@ func TestPullRequestWithLabels(t *testing.T) {
 				assert.Equal("/repos/heathcliff26/gh-utility/issues/1/labels", r.URL.Path, "Should use issues labels endpoint")
 
 				var labelReq client.LabelRequest
-				require.NoError(json.NewDecoder(r.Body).Decode(&labelReq), "Should decode label request")
+				require.NoError(json.UnmarshalRead(r.Body, &labelReq), "Should decode label request")
 				assert.ElementsMatch([]string{"enhancement", "bug"}, labelReq.Labels, "Should add labels")
 
 				w.WriteHeader(http.StatusOK)

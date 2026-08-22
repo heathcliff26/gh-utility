@@ -2,7 +2,7 @@ package status
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/v2"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -30,7 +30,7 @@ func TestRun(t *testing.T) {
 				assert.Equal("/repos/owner/repo/check-runs", r.URL.Path, "Should use check-runs endpoint")
 
 				var req client.CheckRun
-				err := json.NewDecoder(r.Body).Decode(&req)
+				err := json.UnmarshalRead(r.Body, &req)
 				assert.NoError(err, "Should decode check run request")
 				assert.Equal("check-name", req.Name, "Should have correct name")
 				assert.Equal("commit-sha", req.HeadSHA, "Should have correct head_sha")
@@ -88,7 +88,7 @@ func TestRun(t *testing.T) {
 				assert.Equal("/repos/owner/repo/check-runs/42", r.URL.Path)
 
 				var req client.CheckRun
-				err := json.NewDecoder(r.Body).Decode(&req)
+				err := json.UnmarshalRead(r.Body, &req)
 				assert.NoError(err, "Should decode check run request")
 				assert.Equal("existing-check", req.Name, "Should have correct name")
 				assert.Equal("completed", req.Status, "Should have translated status")
@@ -127,44 +127,32 @@ func TestRun(t *testing.T) {
 
 		var requestCount int
 		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			switch requestCount {
-			case 0:
+			requestCount++
+			if requestCount == 1 {
 				assert.Equal(http.MethodGet, r.Method, "Should list check runs once")
 				assert.Equal("/repos/owner/repo/commits/commit-sha/check-runs", r.URL.Path)
 				w.WriteHeader(http.StatusOK)
 				_, _ = w.Write([]byte(`{"total_count":0,"check_runs":[]}`))
-			case 1:
-				assert.Equal(http.MethodPost, r.Method, "Should create check-1")
-				var req client.CheckRun
-				err := json.NewDecoder(r.Body).Decode(&req)
-				assert.NoError(err)
-				assert.Equal("check-1", req.Name)
+				return
+			}
+
+			assert.Equal(http.MethodPost, r.Method, "Should create check")
+			var req client.CheckRun
+			err := json.UnmarshalRead(r.Body, &req)
+			assert.NoError(err)
+
+			switch req.Name {
+			case "check-1":
 				assert.Equal("in_progress", req.Status)
-
-				w.WriteHeader(http.StatusCreated)
-			case 2:
-				assert.Equal(http.MethodPost, r.Method, "Should create check-2")
-				var req client.CheckRun
-				err := json.NewDecoder(r.Body).Decode(&req)
-				assert.NoError(err)
-				assert.Equal("check-2", req.Name)
+			case "check-2":
 				assert.Equal("queued", req.Status)
-
-				w.WriteHeader(http.StatusCreated)
-			case 3:
-				assert.Equal(http.MethodPost, r.Method, "Should create check-3")
-				var req client.CheckRun
-				err := json.NewDecoder(r.Body).Decode(&req)
-				assert.NoError(err)
-				assert.Equal("check-3", req.Name)
+			case "check-3":
 				assert.Equal("completed", req.Status)
 				assert.Equal("failure", req.Conclusion)
-
-				w.WriteHeader(http.StatusCreated)
 			default:
 				t.Fatalf("unexpected request %d", requestCount)
 			}
-			requestCount++
+			w.WriteHeader(http.StatusCreated)
 		}))
 		defer s.Close()
 
@@ -188,9 +176,11 @@ func TestRun(t *testing.T) {
 		err := run(cmd, positionalArgs)
 		assert.NoError(err, "Should succeed")
 		assert.Equal(4, requestCount, "Should make expected API calls")
-		assert.Contains(buf.String(), "Check run 'check-1' set to 'running'", "Should report first check")
-		assert.Contains(buf.String(), "Check run 'check-2' set to 'pending'", "Should report second check")
-		assert.Contains(buf.String(), "Check run 'check-3' set to 'failed'", "Should report third check")
+
+		output := buf.String()
+		assert.Contains(output, "Check run 'check-1' set to 'running'", "Should report first check")
+		assert.Contains(output, "Check run 'check-2' set to 'pending'", "Should report second check")
+		assert.Contains(output, "Check run 'check-3' set to 'failed'", "Should report third check")
 	})
 
 	t.Run("InvalidCheckFormat", func(t *testing.T) {

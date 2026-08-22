@@ -1,7 +1,7 @@
 package client
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -117,7 +117,7 @@ func TestCreateTree(t *testing.T) {
 			assert.NotEmpty(r.Header.Get("Accept"), "Should set Accept header")
 
 			var treeReq TreeRequest
-			err := json.NewDecoder(r.Body).Decode(&treeReq)
+			err := json.UnmarshalRead(r.Body, &treeReq)
 			assert.NoError(err, "Should decode request")
 
 			assert.Equal(baseTree, treeReq.BaseTree, "Should have correct base tree")
@@ -166,7 +166,7 @@ func TestCreateCommit(t *testing.T) {
 			assert.NotEmpty(r.Header.Get("Accept"), "Should set Accept header")
 
 			var commitReq CommitRequest
-			err := json.NewDecoder(r.Body).Decode(&commitReq)
+			err := json.UnmarshalRead(r.Body, &commitReq)
 			assert.NoError(err, "Should decode request")
 
 			assert.Equal(msg, commitReq.Message, "Should have correct message")
@@ -226,7 +226,7 @@ func TestCreateOrUpdateBranch(t *testing.T) {
 				assert.Equal(http.MethodPost, r.Method, "Should use POST method")
 				assert.Equal("/repos/test/repo/git/refs", r.URL.Path, "Should use correct path")
 
-				err := json.NewDecoder(r.Body).Decode(&branchReq)
+				err := json.UnmarshalRead(r.Body, &branchReq)
 				assert.NoError(err, "Should decode request")
 				assert.Equal(commit, branchReq.SHA, "Should have commit SHA")
 				assert.Equal("refs/heads/"+branch, branchReq.Ref, "Should have branch")
@@ -235,7 +235,7 @@ func TestCreateOrUpdateBranch(t *testing.T) {
 				assert.Equal(http.MethodPatch, r.Method, "Should use PATCH method")
 				assert.Equal("/repos/test/repo/git/refs/heads/testbranch", r.URL.Path, "Should use correct path")
 
-				err := json.NewDecoder(r.Body).Decode(&branchReq)
+				err := json.UnmarshalRead(r.Body, &branchReq)
 				assert.NoError(err, "Should decode request")
 				assert.Equal(commit, branchReq.SHA, "Should have commit SHA")
 				assert.Empty(branchReq.Ref, "Should not have branch")
@@ -379,7 +379,7 @@ func TestGetPullRequestForBranch(t *testing.T) {
 				assert.Equal("/repos/test/repo/pulls", r.URL.Path, "Should use correct path")
 				assert.NotEmpty(r.Header.Get("Accept"), "Should set Accept header")
 
-				err := json.NewEncoder(w).Encode(tCase.PRs)
+				err := json.MarshalWrite(w, tCase.PRs)
 				assert.NoError(err, "Should send response")
 			}))
 			defer s.Close()
@@ -414,7 +414,7 @@ func TestCreatePullRequest(t *testing.T) {
 			assert.NotEmpty(r.Header.Get("Accept"), "Should set Accept header")
 
 			var req PrRequest
-			err := json.NewDecoder(r.Body).Decode(&req)
+			err := json.UnmarshalRead(r.Body, &req)
 			assert.NoError(err, "Should decode request")
 
 			assert.Equal(title, req.Title, "Should have correct title")
@@ -466,7 +466,7 @@ func TestUpdatePullRequest(t *testing.T) {
 			assert.NotEmpty(r.Header.Get("Accept"), "Should set Accept header")
 
 			var req PrRequest
-			err := json.NewDecoder(r.Body).Decode(&req)
+			err := json.UnmarshalRead(r.Body, &req)
 			assert.NoError(err, "Should decode request")
 
 			assert.Equal(title, req.Title, "Should have correct title")
@@ -542,7 +542,7 @@ func TestCreateOrUpdatePullRequest(t *testing.T) {
 				if existingPR != nil {
 					res = append(res, *existingPR)
 				}
-				err := json.NewEncoder(w).Encode(res)
+				err := json.MarshalWrite(w, res)
 				assert.NoError(err, "Should encode response body")
 
 				return
@@ -550,13 +550,13 @@ func TestCreateOrUpdatePullRequest(t *testing.T) {
 				assert.Equal(http.MethodPost, r.Method, "Should use POST method")
 				assert.Equal("/repos/test/repo/pulls", r.URL.Path, "Should use correct path")
 
-				err := json.NewDecoder(r.Body).Decode(&req)
+				err := json.UnmarshalRead(r.Body, &req)
 				assert.NoError(err, "Should decode request")
 			case 2:
 				assert.Equal(http.MethodPatch, r.Method, "Should use PATCH method")
 				assert.Equal("/repos/test/repo/pulls/1234", r.URL.Path, "Should use correct path")
 
-				err := json.NewDecoder(r.Body).Decode(&req)
+				err := json.UnmarshalRead(r.Body, &req)
 				assert.NoError(err, "Should decode request")
 
 			default:
@@ -564,7 +564,7 @@ func TestCreateOrUpdatePullRequest(t *testing.T) {
 			}
 
 			w.WriteHeader(statusCodes[i])
-			err := json.NewEncoder(w).Encode(templatePR)
+			err := json.MarshalWrite(w, templatePR)
 			assert.NoError(err, "Should encode response body")
 		}))
 	}
@@ -662,7 +662,7 @@ func TestAddLabels(t *testing.T) {
 			assert.NotEmpty(r.Header.Get("Accept"), "Should set Accept header")
 
 			var req LabelRequest
-			err := json.NewDecoder(r.Body).Decode(&req)
+			err := json.UnmarshalRead(r.Body, &req)
 			assert.NoError(err, "Should decode request")
 
 			assert.Equal(labels, req.Labels, "Should have correct labels")
@@ -708,7 +708,7 @@ func TestCreateCheckRun(t *testing.T) {
 			assert.NotEmpty(r.Header.Get("Accept"), "Should set Accept header")
 
 			var req CheckRun
-			err := json.NewDecoder(r.Body).Decode(&req)
+			err := json.UnmarshalRead(r.Body, &req)
 			assert.NoError(err, "Should decode request")
 
 			assert.Equal(name, req.Name, "Should have correct name")
@@ -759,7 +759,7 @@ func TestUpdateCheckRun(t *testing.T) {
 			assert.NotEmpty(r.Header.Get("Accept"), "Should set Accept header")
 
 			var req CheckRun
-			err := json.NewDecoder(r.Body).Decode(&req)
+			err := json.UnmarshalRead(r.Body, &req)
 			assert.NoError(err, "Should decode request")
 
 			assert.Equal(name, req.Name, "Should have correct name")
@@ -815,7 +815,7 @@ func TestCheckRunsForCommit(t *testing.T) {
 			assert.NotEmpty(r.Header.Get("Accept"), "Should set Accept header")
 
 			w.WriteHeader(status)
-			err := json.NewEncoder(w).Encode(CheckRunsListResponse{
+			err := json.MarshalWrite(w, CheckRunsListResponse{
 				TotalCount: 1,
 				CheckRuns:  []CheckRun{checkRun},
 			})
@@ -867,7 +867,7 @@ func TestSetCheckRunStatus(t *testing.T) {
 			assert.NotEmpty(r.Header.Get("Accept"), "Should set Accept header")
 
 			var req CheckRun
-			err := json.NewDecoder(r.Body).Decode(&req)
+			err := json.UnmarshalRead(r.Body, &req)
 			assert.NoError(err, "Should decode request")
 
 			assert.Equal(name, req.Name, "Should have correct name")

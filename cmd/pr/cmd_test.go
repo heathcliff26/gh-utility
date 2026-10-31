@@ -30,21 +30,13 @@ func TestRun(t *testing.T) {
 
 		dir, _ := testutils.NewTestRepository(t)
 
-		args := []string{
-			"--" + repositoryFlag, dir,
-			"--" + branchFlag, "testbranch",
-			"--" + titleFlag, "Test PR",
-			"--" + bodyFlag, "Lorem Ipsum",
-			"--" + endpointFlag, s.URL,
-		}
 		cmd := NewCommand()
-		_ = cmd.ParseFlags(args)
 
 		var buf bytes.Buffer
 		w := io.Writer(&buf)
 		cmd.SetOut(w)
 
-		err := run(cmd)
+		err := run(cmd, dir, "testbranch", "", "Test PR", "Lorem Ipsum", nil, s.URL)
 		assert.NoError(err, "Should succeed")
 		assert.Equal("No changes detected, exiting\n", buf.String(), "Should exit early")
 	})
@@ -59,17 +51,9 @@ func TestRun(t *testing.T) {
 		}))
 		defer s.Close()
 
-		args := []string{
-			"--" + repositoryFlag, t.TempDir(),
-			"--" + branchFlag, "testbranch",
-			"--" + titleFlag, "Test PR",
-			"--" + bodyFlag, "Lorem Ipsum",
-			"--" + endpointFlag, s.URL,
-		}
 		cmd := NewCommand()
-		_ = cmd.ParseFlags(args)
 
-		err := run(cmd)
+		err := run(cmd, t.TempDir(), "testbranch", "", "Test PR", "Lorem Ipsum", nil, s.URL)
 		assert.Error(err, "Should not succeed")
 	})
 	t.Run("WithLabels", func(t *testing.T) {
@@ -139,23 +123,13 @@ func TestRun(t *testing.T) {
 		}))
 		defer s.Close()
 
-		args := []string{
-			"--" + repositoryFlag, dir,
-			"--" + branchFlag, "feature",
-			"--" + titleFlag, "Test PR",
-			"--" + bodyFlag, "Lorem Ipsum",
-			"--" + labelFlag, "bug",
-			"--" + labelFlag, "enhancement",
-			"--" + endpointFlag, s.URL,
-		}
 		cmd := NewCommand()
-		_ = cmd.ParseFlags(args)
 
 		var buf bytes.Buffer
 		w := io.Writer(&buf)
 		cmd.SetOut(w)
 
-		err = run(cmd)
+		err = run(cmd, dir, "feature", "", "Test PR", "Lorem Ipsum", []string{"bug", "enhancement"}, s.URL)
 		assert.NoError(err, "Should succeed")
 		assert.Equal("Tree: tree-sha\nCommit: commit-sha\n\nhttps://example.com/pr/1\n", buf.String(), "Should print PR URL")
 		assert.Equal(7, requestCount, "Should make expected API calls")

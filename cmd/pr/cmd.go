@@ -24,64 +24,36 @@ func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "pr",
 		Short: "Commits and (force) pushes current changes to a (new) branch and creates/updates a pull request",
-		Run: func(cmd *cobra.Command, _ []string) {
-			err := run(cmd)
-			if err != nil {
-				cmd.PrintErrln(cmd.ErrPrefix(), err)
-				os.Exit(1)
-			}
-		},
 	}
 
-	cmd.Flags().StringP(repositoryFlag, "r", ".", "Path to the git repository.")
+	path := cmd.Flags().StringP(repositoryFlag, "r", ".", "Path to the git repository.")
 
-	cmd.Flags().StringP(branchFlag, "b", "", "Branch to push to, will be created if it does not exist")
+	branch := cmd.Flags().StringP(branchFlag, "b", "", "Branch to push to, will be created if it does not exist")
 	_ = cmd.MarkFlagRequired(branchFlag)
 
-	cmd.Flags().String(messageFlag, "", "Commit message (default PR Title + Body)")
+	message := cmd.Flags().String(messageFlag, "", "Commit message (default PR Title + Body)")
 
-	cmd.Flags().StringP(titleFlag, "t", "", "Title of the PR")
+	title := cmd.Flags().StringP(titleFlag, "t", "", "Title of the PR")
 	_ = cmd.MarkFlagRequired(titleFlag)
 
-	cmd.Flags().StringP(bodyFlag, "m", "", "Description of the PR")
+	body := cmd.Flags().StringP(bodyFlag, "m", "", "Description of the PR")
 
-	cmd.Flags().StringArrayP(labelFlag, "l", []string{}, "Label(s) to add to the PR. Can be specified multiple times.")
+	labels := cmd.Flags().StringArrayP(labelFlag, "l", []string{}, "Label(s) to add to the PR. Can be specified multiple times.")
 
-	cmd.Flags().String(endpointFlag, client.DefaultEndpoint, "GitHub API endpoint")
+	endpoint := cmd.Flags().String(endpointFlag, client.DefaultEndpoint, "GitHub API endpoint")
+
+	cmd.Run = func(cmd *cobra.Command, _ []string) {
+		err := run(cmd, *path, *branch, *message, *title, *body, *labels, *endpoint)
+		if err != nil {
+			cmd.PrintErrln(cmd.ErrPrefix(), err)
+			os.Exit(1)
+		}
+	}
 
 	return cmd
 }
 
-func run(cmd *cobra.Command) error {
-	path, err := cmd.Flags().GetString(repositoryFlag)
-	if err != nil {
-		return err
-	}
-	branch, err := cmd.Flags().GetString(branchFlag)
-	if err != nil {
-		return err
-	}
-	msg, err := cmd.Flags().GetString(messageFlag)
-	if err != nil {
-		return err
-	}
-	title, err := cmd.Flags().GetString(titleFlag)
-	if err != nil {
-		return err
-	}
-	body, err := cmd.Flags().GetString(bodyFlag)
-	if err != nil {
-		return err
-	}
-	labels, err := cmd.Flags().GetStringArray(labelFlag)
-	if err != nil {
-		return err
-	}
-	endpoint, err := cmd.Flags().GetString(endpointFlag)
-	if err != nil {
-		return err
-	}
-
+func run(cmd *cobra.Command, path, branch, msg, title, body string, labels []string, endpoint string) error {
 	c := client.NewClient(endpoint)
 
 	if msg == "" {

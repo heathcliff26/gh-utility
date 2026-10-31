@@ -25,20 +25,13 @@ func TestRun(t *testing.T) {
 
 		dir, _ := testutils.NewTestRepository(t)
 
-		args := []string{
-			"--" + repositoryFlag, dir,
-			"--" + branchFlag, "testbranch",
-			"--" + messageFlag, "Test Commit Message",
-			"--" + endpointFlag, s.URL,
-		}
 		cmd := NewCommand()
-		_ = cmd.ParseFlags(args)
 
 		var buf bytes.Buffer
 		w := io.Writer(&buf)
 		cmd.SetOut(w)
 
-		err := run(cmd)
+		err := run(cmd, dir, "testbranch", "Test Commit Message", s.URL)
 		assert.NoError(err, "Should succeed")
 		assert.Equal("No changes detected, exiting\n", buf.String(), "Should exit early")
 	})
@@ -53,16 +46,9 @@ func TestRun(t *testing.T) {
 		}))
 		defer s.Close()
 
-		args := []string{
-			"--" + repositoryFlag, t.TempDir(),
-			"--" + branchFlag, "testbranch",
-			"--" + messageFlag, "Test Commit Message",
-			"--" + endpointFlag, s.URL,
-		}
 		cmd := NewCommand()
-		_ = cmd.ParseFlags(args)
 
-		err := run(cmd)
+		err := run(cmd, t.TempDir(), "testbranch", "Test Commit Message", s.URL)
 		assert.Error(err, "Should not succeed")
 	})
 }

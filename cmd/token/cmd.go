@@ -20,55 +20,35 @@ func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "token",
 		Short: "Create a new temporary access token for the app",
-		Run: func(cmd *cobra.Command, _ []string) {
-			err := run(cmd)
-			if err != nil {
-				cmd.PrintErrln(cmd.ErrPrefix(), err)
-				os.Exit(1)
-			}
-		},
 	}
 
-	cmd.Flags().StringP(appKeyPathFlag, "k", "", "Path to the private key of the app")
+	keyPath := cmd.Flags().StringP(appKeyPathFlag, "k", "", "Path to the private key of the app")
 	_ = cmd.MarkFlagFilename(appKeyPathFlag)
 	_ = cmd.MarkFlagRequired(appKeyPathFlag)
 
-	cmd.Flags().StringP(clientIDFlag, "c", "", "Client ID of the app")
+	clientID := cmd.Flags().StringP(clientIDFlag, "c", "", "Client ID of the app")
 	_ = cmd.MarkFlagRequired(clientIDFlag)
 
-	cmd.Flags().StringP(installationIDFlag, "i", "", "Installation ID of the app")
+	installationID := cmd.Flags().StringP(installationIDFlag, "i", "", "Installation ID of the app")
 	_ = cmd.MarkFlagRequired(installationIDFlag)
 
-	cmd.Flags().StringP(outputFlag, "o", "", "Write the token to disk instead of outputting on console")
+	output := cmd.Flags().StringP(outputFlag, "o", "", "Write the token to disk instead of outputting on console")
 	_ = cmd.MarkFlagFilename(outputFlag)
 
-	cmd.Flags().String(endpointFlag, client.DefaultEndpoint, "GitHub API endpoint")
+	endpoint := cmd.Flags().String(endpointFlag, client.DefaultEndpoint, "GitHub API endpoint")
+
+	cmd.Run = func(cmd *cobra.Command, _ []string) {
+		err := run(cmd, *keyPath, *clientID, *installationID, *output, *endpoint)
+		if err != nil {
+			cmd.PrintErrln(cmd.ErrPrefix(), err)
+			os.Exit(1)
+		}
+	}
 
 	return cmd
 }
 
-func run(cmd *cobra.Command) error {
-	keyPath, err := cmd.Flags().GetString(appKeyPathFlag)
-	if err != nil {
-		return err
-	}
-	clientID, err := cmd.Flags().GetString(clientIDFlag)
-	if err != nil {
-		return err
-	}
-	installationID, err := cmd.Flags().GetString(installationIDFlag)
-	if err != nil {
-		return err
-	}
-	output, err := cmd.Flags().GetString(outputFlag)
-	if err != nil {
-		return err
-	}
-	endpoint, err := cmd.Flags().GetString(endpointFlag)
-	if err != nil {
-		return err
-	}
-
+func run(cmd *cobra.Command, keyPath, clientID, installationID, output, endpoint string) error {
 	c := client.NewClient(endpoint)
 	token, err := c.GetToken(keyPath, clientID, installationID)
 	if err != nil {

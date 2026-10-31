@@ -19,7 +19,7 @@ func NewCommand() *cobra.Command {
 		Args:  cobra.RangeArgs(1, 2),
 	}
 
-	fetchDepth := cmd.Flags().IntP(fetchDepthFlag, "d", 0, "Fetch depth for the clone operation, defaults to 0 (everything)")
+	fetchDepth := cmd.Flags().IntP(fetchDepthFlag, "d", 1, "Fetch depth for the clone operation, 0 fetches all commits.")
 
 	cmd.Run = func(cmd *cobra.Command, args []string) {
 		err := run(args, *fetchDepth)

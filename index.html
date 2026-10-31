@@ -73,7 +73,7 @@
 				
 				<option value="file8">github.com/heathcliff26/gh-utility/pkg/client/types.go (100.0%)</option>
 				
-				<option value="file9">github.com/heathcliff26/gh-utility/pkg/client/utils.go (85.7%)</option>
+				<option value="file9">github.com/heathcliff26/gh-utility/pkg/client/utils.go (87.3%)</option>
 				
 				<option value="file10">github.com/heathcliff26/gh-utility/pkg/git/git.go (93.0%)</option>
 				
@@ -1074,11 +1074,10 @@ func (c *Client) GetCheckRunsForCommit(token, repo, ref string) ([]CheckRun, err
 
 // Check whether the check-run already exists in the provided list and call create or update accordingly
 func (c *Client) SetCheckRunStatus(token, repo, name, commit, description, detailsURL, status string, checkRuns []CheckRun) error {
-        <span class="cov8" title="1">for _, checkRun := range checkRuns </span>{
-                <span class="cov8" title="1">if checkRun.Name == name </span>{
-                        <span class="cov8" title="1">return c.UpdateCheckRun(token, repo, checkRun.ID, name, commit, description, detailsURL, status)
-</span>                }
-        }
+        <span class="cov8" title="1">checkRun := findLatestCheckRun(name, checkRuns)
+        if checkRun != nil &amp;&amp; checkRun.Status != "completed" </span>{
+                <span class="cov8" title="1">return c.UpdateCheckRun(token, repo, checkRun.ID, name, commit, description, detailsURL, status)
+</span>        }
         <span class="cov8" title="1">return c.CreateCheckRun(token, repo, name, commit, description, detailsURL, status)</span>
 }
 
@@ -1347,6 +1346,19 @@ func translateCheckRunStatus(status string) (string, string, error) {
         default:
                 <span class="cov8" title="1">return "", "", fmt.Errorf("unknown status '%s'", status)</span>
         }
+}
+
+// Find the latest check-run with the given name in the provided list.
+func findLatestCheckRun(name string, checkRuns []CheckRun) *CheckRun {
+        <span class="cov8" title="1">var latestCheckRun *CheckRun
+        for _, checkRun := range checkRuns </span>{
+                <span class="cov8" title="1">if checkRun.Name == name </span>{
+                        <span class="cov8" title="1">if latestCheckRun == nil || checkRun.ID &gt; latestCheckRun.ID </span>{
+                                <span class="cov8" title="1">latestCheckRun = &amp;checkRun
+</span>                        }
+                }
+        }
+        <span class="cov8" title="1">return latestCheckRun</span>
 }
 </pre>
 		

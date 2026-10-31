@@ -26,6 +26,12 @@ func TestRun(t *testing.T) {
 				w.WriteHeader(http.StatusOK)
 				_, _ = w.Write([]byte(`{"total_count":0,"check_runs":[]}`))
 			case 1:
+				assert.Equal(http.MethodGet, r.Method, "Should get app")
+				assert.Equal("/app", r.URL.Path, "Should use app endpoint")
+
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{"id":1}`))
+			case 2:
 				assert.Equal(http.MethodPost, r.Method, "Should create check run")
 				assert.Equal("/repos/owner/repo/check-runs", r.URL.Path, "Should use check-runs endpoint")
 
@@ -54,19 +60,13 @@ func TestRun(t *testing.T) {
 			"commit-sha",
 			"check-name=succeeded",
 		}
-		flagArgs := []string{
-			"--" + endpointFlag, s.URL,
-			"--" + descriptionFlag, "Test Description",
-			"--" + urlFlag, "https://example.com",
-		}
 		cmd := NewCommand()
-		_ = cmd.ParseFlags(flagArgs)
 
 		var buf bytes.Buffer
 		w := io.Writer(&buf)
 		cmd.SetOut(w)
 
-		err := run(cmd, positionalArgs)
+		err := run(cmd, positionalArgs, s.URL, "Test Description", "https://example.com")
 		assert.NoError(err, "Should succeed")
 		assert.Equal("Check run 'check-name' set to 'succeeded'\n", buf.String(), "Should print success message")
 	})
@@ -82,8 +82,14 @@ func TestRun(t *testing.T) {
 				assert.Equal("/repos/owner/repo/commits/commit-sha/check-runs", r.URL.Path)
 
 				w.WriteHeader(http.StatusOK)
-				_, _ = w.Write([]byte(`{"total_count":1,"check_runs":[{"id":42,"head_sha":"commit-sha","name":"existing-check","node_id":"node","status":"queued","conclusion":""}]}`))
+				_, _ = w.Write([]byte(`{"total_count":1,"check_runs":[{"id":42,"head_sha":"commit-sha","name":"existing-check","node_id":"node","status":"queued","conclusion":"","app":{"id":1}}]}`))
 			case 1:
+				assert.Equal(http.MethodGet, r.Method, "Should get app")
+				assert.Equal("/app", r.URL.Path, "Should use app endpoint")
+
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{"id":1}`))
+			case 2:
 				assert.Equal(http.MethodPatch, r.Method, "Should update check run")
 				assert.Equal("/repos/owner/repo/check-runs/42", r.URL.Path)
 
@@ -107,17 +113,13 @@ func TestRun(t *testing.T) {
 			"commit-sha",
 			"existing-check=failed",
 		}
-		flagArgs := []string{
-			"--" + endpointFlag, s.URL,
-		}
 		cmd := NewCommand()
-		_ = cmd.ParseFlags(flagArgs)
 
 		var buf bytes.Buffer
 		w := io.Writer(&buf)
 		cmd.SetOut(w)
 
-		err := run(cmd, positionalArgs)
+		err := run(cmd, positionalArgs, s.URL, "", "")
 		assert.NoError(err, "Should succeed")
 		assert.Equal("Check run 'existing-check' set to 'failed'\n", buf.String(), "Should print success message")
 	})
@@ -128,11 +130,18 @@ func TestRun(t *testing.T) {
 		var requestCount int
 		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			requestCount++
-			if requestCount == 1 {
+			switch requestCount {
+			case 1:
 				assert.Equal(http.MethodGet, r.Method, "Should list check runs once")
 				assert.Equal("/repos/owner/repo/commits/commit-sha/check-runs", r.URL.Path)
 				w.WriteHeader(http.StatusOK)
 				_, _ = w.Write([]byte(`{"total_count":0,"check_runs":[]}`))
+				return
+			case 2:
+				assert.Equal(http.MethodGet, r.Method, "Should get app")
+				assert.Equal("/app", r.URL.Path, "Should use app endpoint")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{"id":1}`))
 				return
 			}
 
@@ -163,19 +172,15 @@ func TestRun(t *testing.T) {
 			"check-2=pending",
 			"check-3=failed",
 		}
-		flagArgs := []string{
-			"--" + endpointFlag, s.URL,
-		}
 		cmd := NewCommand()
-		_ = cmd.ParseFlags(flagArgs)
 
 		var buf bytes.Buffer
 		w := io.Writer(&buf)
 		cmd.SetOut(w)
 
-		err := run(cmd, positionalArgs)
+		err := run(cmd, positionalArgs, s.URL, "", "")
 		assert.NoError(err, "Should succeed")
-		assert.Equal(4, requestCount, "Should make expected API calls")
+		assert.Equal(5, requestCount, "Should make expected API calls")
 
 		output := buf.String()
 		assert.Contains(output, "Check run 'check-1' set to 'running'", "Should report first check")
@@ -191,13 +196,9 @@ func TestRun(t *testing.T) {
 			"commit-sha",
 			"invalidcheck",
 		}
-		flagArgs := []string{
-			"--" + endpointFlag, "http://localhost",
-		}
 		cmd := NewCommand()
-		_ = cmd.ParseFlags(flagArgs)
 
-		err := run(cmd, positionalArgs)
+		err := run(cmd, positionalArgs, "http://localhost", "", "")
 		assert.Error(err, "Should fail with invalid check format")
 		assert.Contains(err.Error(), "invalid check format", "Should mention invalid format")
 	})
@@ -210,8 +211,14 @@ func TestRun(t *testing.T) {
 			switch requestCount {
 			case 0:
 				assert.Equal(http.MethodGet, r.Method, "Should list check runs")
+				assert.Equal("/repos/owner/repo/commits/commit-sha/check-runs", r.URL.Path)
 				w.WriteHeader(http.StatusOK)
 				_, _ = w.Write([]byte(`{"total_count":0,"check_runs":[]}`))
+			case 1:
+				assert.Equal(http.MethodGet, r.Method, "Should get app")
+				assert.Equal("/app", r.URL.Path, "Should use app endpoint")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{"id":1}`))
 			default:
 				t.Fatalf("unexpected request %d", requestCount)
 			}
@@ -224,15 +231,12 @@ func TestRun(t *testing.T) {
 			"commit-sha",
 			"check-name=unknown_status",
 		}
-		flagArgs := []string{
-			"--" + endpointFlag, s.URL,
-		}
 		cmd := NewCommand()
-		_ = cmd.ParseFlags(flagArgs)
 
-		err := run(cmd, positionalArgs)
+		err := run(cmd, positionalArgs, s.URL, "", "")
 		assert.Error(err, "Should fail with unknown status")
 		assert.Contains(err.Error(), "unknown status", "Should mention unknown status")
+		assert.Equal(2, requestCount, "Should list check runs and get app")
 	})
 
 	t.Run("ApiError", func(t *testing.T) {
@@ -256,13 +260,9 @@ func TestRun(t *testing.T) {
 			"commit-sha",
 			"check-name=success",
 		}
-		flagArgs := []string{
-			"--" + endpointFlag, s.URL,
-		}
 		cmd := NewCommand()
-		_ = cmd.ParseFlags(flagArgs)
 
-		err := run(cmd, positionalArgs)
+		err := run(cmd, positionalArgs, s.URL, "", "")
 		assert.Error(err, "Should fail when API returns error")
 		assert.Contains(err.Error(), "failed to get check runs for commit", "Should wrap API error")
 	})

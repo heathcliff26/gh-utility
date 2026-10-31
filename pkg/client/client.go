@@ -504,12 +504,33 @@ func (c *Client) GetCheckRunsForCommit(token, repo, ref string) ([]CheckRun, err
 }
 
 // Check whether the check-run already exists in the provided list and call create or update accordingly
-func (c *Client) SetCheckRunStatus(token, repo, name, commit, description, detailsURL, status string, checkRuns []CheckRun) error {
-	checkRun := findLatestCheckRun(name, checkRuns)
+func (c *Client) SetCheckRunStatus(token, repo, name, commit, description, detailsURL, status string, checkRuns []CheckRun, appID int) error {
+	checkRun := findLatestCheckRun(name, checkRuns, appID)
 	if checkRun != nil && checkRun.Status != "completed" {
 		return c.UpdateCheckRun(token, repo, checkRun.ID, name, commit, description, detailsURL, status)
 	}
 	return c.CreateCheckRun(token, repo, name, commit, description, detailsURL, status)
+}
+
+// Get the app belonging to the token
+// API endpoint: GET /app
+// Parameters:
+// - token: The GitHub app installation token
+// Returns:
+// - The app details
+// - An error if any occurred
+func (c *Client) GetApp(token string) (*App, error) {
+	req, err := newRequest(http.MethodGet, fmt.Sprintf("%s/app", c.endpoint), nil, token)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	var app App
+	err = c.do(req, http.StatusOK, &app)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get app: %w", err)
+	}
+	return &app, nil
 }
 
 // Send the given http request and parse the returned result

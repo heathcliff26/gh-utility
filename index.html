@@ -55,19 +55,19 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/heathcliff26/gh-utility/cmd/clone/cmd.go (66.7%)</option>
+				<option value="file0">github.com/heathcliff26/gh-utility/cmd/clone/cmd.go (69.2%)</option>
 				
 				<option value="file1">github.com/heathcliff26/gh-utility/cmd/cmd.go (66.7%)</option>
 				
-				<option value="file2">github.com/heathcliff26/gh-utility/cmd/commit/cmd.go (73.3%)</option>
+				<option value="file2">github.com/heathcliff26/gh-utility/cmd/commit/cmd.go (78.9%)</option>
 				
 				<option value="file3">github.com/heathcliff26/gh-utility/cmd/main.go (0.0%)</option>
 				
-				<option value="file4">github.com/heathcliff26/gh-utility/cmd/pr/cmd.go (77.8%)</option>
+				<option value="file4">github.com/heathcliff26/gh-utility/cmd/pr/cmd.go (85.3%)</option>
 				
 				<option value="file5">github.com/heathcliff26/gh-utility/cmd/status/cmd.go (84.8%)</option>
 				
-				<option value="file6">github.com/heathcliff26/gh-utility/cmd/token/cmd.go (76.9%)</option>
+				<option value="file6">github.com/heathcliff26/gh-utility/cmd/token/cmd.go (84.0%)</option>
 				
 				<option value="file7">github.com/heathcliff26/gh-utility/pkg/client/client.go (89.4%)</option>
 				
@@ -114,26 +114,22 @@ func NewCommand() *cobra.Command {
                 Use:   "clone [flags] &lt;repository&gt; [&lt;directory&gt;]",
                 Short: "Clone a repository with a temporary installation token into the specified directory",
                 Args:  cobra.RangeArgs(1, 2),
-                Run: func(cmd *cobra.Command, args []string) </span>{
-                        <span class="cov0" title="0">err := run(cmd, args)
-                        if err != nil </span>{
-                                <span class="cov0" title="0">cmd.PrintErrln(cmd.ErrPrefix(), err)
-                                os.Exit(1)
-</span>                        }
-                },
+</span>        }
+
+        <span class="cov8" title="1">fetchDepth := cmd.Flags().IntP(fetchDepthFlag, "d", 0, "Fetch depth for the clone operation, defaults to 0 (everything)")
+</span>
+        <span class="cov8" title="1">cmd.Run = func(cmd *cobra.Command, args []string) </span>{
+                <span class="cov0" title="0">err := run(args, *fetchDepth)
+                if err != nil </span>{
+                        <span class="cov0" title="0">cmd.PrintErrln(cmd.ErrPrefix(), err)
+                        os.Exit(1)
+</span>                }
         }
 
-        <span class="cov8" title="1">cmd.Flags().IntP(fetchDepthFlag, "d", 0, "Fetch depth for the clone operation, defaults to 0 (everything)")
-</span>
         <span class="cov8" title="1">return cmd</span>
 }
 
-func run(cmd *cobra.Command, args []string) error {
-        <span class="cov8" title="1">fetchDepth, err := cmd.Flags().GetInt(fetchDepthFlag)
-        if err != nil </span>{
-                <span class="cov0" title="0">return err
-</span>        }
-
+func run(args []string, fetchDepth int) error {
         <span class="cov8" title="1">url := args[0]
         directory := ""
         if len(args) == 2 </span>{
@@ -210,47 +206,30 @@ func NewCommand() *cobra.Command {
         <span class="cov8" title="1">cmd := &amp;cobra.Command{
                 Use:   "commit",
                 Short: "Push a new commit to the given branch using force push",
-                Run: func(cmd *cobra.Command, _ []string) </span>{
-                        <span class="cov0" title="0">err := run(cmd)
-                        if err != nil </span>{
-                                <span class="cov0" title="0">cmd.PrintErrln(cmd.ErrPrefix(), err)
-                                os.Exit(1)
-</span>                        }
-                },
-        }
+</span>        }
 
-        <span class="cov8" title="1">cmd.Flags().StringP(repositoryFlag, "r", ".", "Path to the git repository")
+        <span class="cov8" title="1">path := cmd.Flags().StringP(repositoryFlag, "r", ".", "Path to the git repository")
 </span>
-        <span class="cov8" title="1">cmd.Flags().StringP(branchFlag, "b", "", "Branch to push to, will be created if it does not exist")
+        <span class="cov8" title="1">branch := cmd.Flags().StringP(branchFlag, "b", "", "Branch to push to, will be created if it does not exist")
         _ = cmd.MarkFlagRequired(branchFlag)
 </span>
-        <span class="cov8" title="1">cmd.Flags().StringP(messageFlag, "m", "", "Commit message")
+        <span class="cov8" title="1">message := cmd.Flags().StringP(messageFlag, "m", "", "Commit message")
         _ = cmd.MarkFlagRequired(messageFlag)
 </span>
-        <span class="cov8" title="1">cmd.Flags().String(endpointFlag, client.DefaultEndpoint, "GitHub API endpoint")
+        <span class="cov8" title="1">endpoint := cmd.Flags().String(endpointFlag, client.DefaultEndpoint, "GitHub API endpoint")
 </span>
+        <span class="cov8" title="1">cmd.Run = func(cmd *cobra.Command, _ []string) </span>{
+                <span class="cov0" title="0">err := run(cmd, *path, *branch, *message, *endpoint)
+                if err != nil </span>{
+                        <span class="cov0" title="0">cmd.PrintErrln(cmd.ErrPrefix(), err)
+                        os.Exit(1)
+</span>                }
+        }
+
         <span class="cov8" title="1">return cmd</span>
 }
 
-func run(cmd *cobra.Command) error {
-        <span class="cov8" title="1">path, err := cmd.Flags().GetString(repositoryFlag)
-        if err != nil </span>{
-                <span class="cov0" title="0">return err
-</span>        }
-        <span class="cov8" title="1">branch, err := cmd.Flags().GetString(branchFlag)
-        if err != nil </span>{
-                <span class="cov0" title="0">return err
-</span>        }
-        <span class="cov8" title="1">msg, err := cmd.Flags().GetString(messageFlag)
-        if err != nil </span>{
-                <span class="cov0" title="0">return err
-</span>        }
-
-        <span class="cov8" title="1">endpoint, err := cmd.Flags().GetString(endpointFlag)
-        if err != nil </span>{
-                <span class="cov0" title="0">return err
-</span>        }
-
+func run(cmd *cobra.Command, path, branch, msg, endpoint string) error {
         <span class="cov8" title="1">c := client.NewClient(endpoint)
 </span>
         <span class="cov8" title="1">tree, commit, err := pullrequest.Commit(c, path, msg, branch, utils.GetToken())
@@ -304,64 +283,36 @@ func NewCommand() *cobra.Command {
         <span class="cov8" title="1">cmd := &amp;cobra.Command{
                 Use:   "pr",
                 Short: "Commits and (force) pushes current changes to a (new) branch and creates/updates a pull request",
-                Run: func(cmd *cobra.Command, _ []string) </span>{
-                        <span class="cov0" title="0">err := run(cmd)
-                        if err != nil </span>{
-                                <span class="cov0" title="0">cmd.PrintErrln(cmd.ErrPrefix(), err)
-                                os.Exit(1)
-</span>                        }
-                },
-        }
+</span>        }
 
-        <span class="cov8" title="1">cmd.Flags().StringP(repositoryFlag, "r", ".", "Path to the git repository.")
+        <span class="cov8" title="1">path := cmd.Flags().StringP(repositoryFlag, "r", ".", "Path to the git repository.")
 </span>
-        <span class="cov8" title="1">cmd.Flags().StringP(branchFlag, "b", "", "Branch to push to, will be created if it does not exist")
+        <span class="cov8" title="1">branch := cmd.Flags().StringP(branchFlag, "b", "", "Branch to push to, will be created if it does not exist")
         _ = cmd.MarkFlagRequired(branchFlag)
 </span>
-        <span class="cov8" title="1">cmd.Flags().String(messageFlag, "", "Commit message (default PR Title + Body)")
+        <span class="cov8" title="1">message := cmd.Flags().String(messageFlag, "", "Commit message (default PR Title + Body)")
 </span>
-        <span class="cov8" title="1">cmd.Flags().StringP(titleFlag, "t", "", "Title of the PR")
+        <span class="cov8" title="1">title := cmd.Flags().StringP(titleFlag, "t", "", "Title of the PR")
         _ = cmd.MarkFlagRequired(titleFlag)
 </span>
-        <span class="cov8" title="1">cmd.Flags().StringP(bodyFlag, "m", "", "Description of the PR")
+        <span class="cov8" title="1">body := cmd.Flags().StringP(bodyFlag, "m", "", "Description of the PR")
 </span>
-        <span class="cov8" title="1">cmd.Flags().StringArrayP(labelFlag, "l", []string{}, "Label(s) to add to the PR. Can be specified multiple times.")
+        <span class="cov8" title="1">labels := cmd.Flags().StringArrayP(labelFlag, "l", []string{}, "Label(s) to add to the PR. Can be specified multiple times.")
 </span>
-        <span class="cov8" title="1">cmd.Flags().String(endpointFlag, client.DefaultEndpoint, "GitHub API endpoint")
+        <span class="cov8" title="1">endpoint := cmd.Flags().String(endpointFlag, client.DefaultEndpoint, "GitHub API endpoint")
 </span>
+        <span class="cov8" title="1">cmd.Run = func(cmd *cobra.Command, _ []string) </span>{
+                <span class="cov0" title="0">err := run(cmd, *path, *branch, *message, *title, *body, *labels, *endpoint)
+                if err != nil </span>{
+                        <span class="cov0" title="0">cmd.PrintErrln(cmd.ErrPrefix(), err)
+                        os.Exit(1)
+</span>                }
+        }
+
         <span class="cov8" title="1">return cmd</span>
 }
 
-func run(cmd *cobra.Command) error {
-        <span class="cov8" title="1">path, err := cmd.Flags().GetString(repositoryFlag)
-        if err != nil </span>{
-                <span class="cov0" title="0">return err
-</span>        }
-        <span class="cov8" title="1">branch, err := cmd.Flags().GetString(branchFlag)
-        if err != nil </span>{
-                <span class="cov0" title="0">return err
-</span>        }
-        <span class="cov8" title="1">msg, err := cmd.Flags().GetString(messageFlag)
-        if err != nil </span>{
-                <span class="cov0" title="0">return err
-</span>        }
-        <span class="cov8" title="1">title, err := cmd.Flags().GetString(titleFlag)
-        if err != nil </span>{
-                <span class="cov0" title="0">return err
-</span>        }
-        <span class="cov8" title="1">body, err := cmd.Flags().GetString(bodyFlag)
-        if err != nil </span>{
-                <span class="cov0" title="0">return err
-</span>        }
-        <span class="cov8" title="1">labels, err := cmd.Flags().GetStringArray(labelFlag)
-        if err != nil </span>{
-                <span class="cov0" title="0">return err
-</span>        }
-        <span class="cov8" title="1">endpoint, err := cmd.Flags().GetString(endpointFlag)
-        if err != nil </span>{
-                <span class="cov0" title="0">return err
-</span>        }
-
+func run(cmd *cobra.Command, path, branch, msg, title, body string, labels []string, endpoint string) error {
         <span class="cov8" title="1">c := client.NewClient(endpoint)
 </span>
         <span class="cov8" title="1">if msg == "" </span>{
@@ -495,55 +446,35 @@ func NewCommand() *cobra.Command {
         <span class="cov8" title="1">cmd := &amp;cobra.Command{
                 Use:   "token",
                 Short: "Create a new temporary access token for the app",
-                Run: func(cmd *cobra.Command, _ []string) </span>{
-                        <span class="cov0" title="0">err := run(cmd)
-                        if err != nil </span>{
-                                <span class="cov0" title="0">cmd.PrintErrln(cmd.ErrPrefix(), err)
-                                os.Exit(1)
-</span>                        }
-                },
-        }
+</span>        }
 
-        <span class="cov8" title="1">cmd.Flags().StringP(appKeyPathFlag, "k", "", "Path to the private key of the app")
+        <span class="cov8" title="1">keyPath := cmd.Flags().StringP(appKeyPathFlag, "k", "", "Path to the private key of the app")
         _ = cmd.MarkFlagFilename(appKeyPathFlag)
         _ = cmd.MarkFlagRequired(appKeyPathFlag)
 </span>
-        <span class="cov8" title="1">cmd.Flags().StringP(clientIDFlag, "c", "", "Client ID of the app")
+        <span class="cov8" title="1">clientID := cmd.Flags().StringP(clientIDFlag, "c", "", "Client ID of the app")
         _ = cmd.MarkFlagRequired(clientIDFlag)
 </span>
-        <span class="cov8" title="1">cmd.Flags().StringP(installationIDFlag, "i", "", "Installation ID of the app")
+        <span class="cov8" title="1">installationID := cmd.Flags().StringP(installationIDFlag, "i", "", "Installation ID of the app")
         _ = cmd.MarkFlagRequired(installationIDFlag)
 </span>
-        <span class="cov8" title="1">cmd.Flags().StringP(outputFlag, "o", "", "Write the token to disk instead of outputting on console")
+        <span class="cov8" title="1">output := cmd.Flags().StringP(outputFlag, "o", "", "Write the token to disk instead of outputting on console")
         _ = cmd.MarkFlagFilename(outputFlag)
 </span>
-        <span class="cov8" title="1">cmd.Flags().String(endpointFlag, client.DefaultEndpoint, "GitHub API endpoint")
+        <span class="cov8" title="1">endpoint := cmd.Flags().String(endpointFlag, client.DefaultEndpoint, "GitHub API endpoint")
 </span>
+        <span class="cov8" title="1">cmd.Run = func(cmd *cobra.Command, _ []string) </span>{
+                <span class="cov0" title="0">err := run(cmd, *keyPath, *clientID, *installationID, *output, *endpoint)
+                if err != nil </span>{
+                        <span class="cov0" title="0">cmd.PrintErrln(cmd.ErrPrefix(), err)
+                        os.Exit(1)
+</span>                }
+        }
+
         <span class="cov8" title="1">return cmd</span>
 }
 
-func run(cmd *cobra.Command) error {
-        <span class="cov8" title="1">keyPath, err := cmd.Flags().GetString(appKeyPathFlag)
-        if err != nil </span>{
-                <span class="cov0" title="0">return err
-</span>        }
-        <span class="cov8" title="1">clientID, err := cmd.Flags().GetString(clientIDFlag)
-        if err != nil </span>{
-                <span class="cov0" title="0">return err
-</span>        }
-        <span class="cov8" title="1">installationID, err := cmd.Flags().GetString(installationIDFlag)
-        if err != nil </span>{
-                <span class="cov0" title="0">return err
-</span>        }
-        <span class="cov8" title="1">output, err := cmd.Flags().GetString(outputFlag)
-        if err != nil </span>{
-                <span class="cov0" title="0">return err
-</span>        }
-        <span class="cov8" title="1">endpoint, err := cmd.Flags().GetString(endpointFlag)
-        if err != nil </span>{
-                <span class="cov0" title="0">return err
-</span>        }
-
+func run(cmd *cobra.Command, keyPath, clientID, installationID, output, endpoint string) error {
         <span class="cov8" title="1">c := client.NewClient(endpoint)
         token, err := c.GetToken(keyPath, clientID, installationID)
         if err != nil </span>{

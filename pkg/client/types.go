@@ -126,9 +126,16 @@ type CheckRun struct {
 	Conclusion string          `json:"conclusion,omitempty"`
 	Output     *CheckRunOutput `json:"output,omitempty"`
 	DetailsURL string          `json:"details_url,omitempty"`
+	App        App             `json:"app,omitempty"`
 }
 
 type CheckRunsListResponse struct {
 	TotalCount int        `json:"total_count"`
 	CheckRuns  []CheckRun `json:"check_runs"`
+}
+
+type App struct {
+	ID       int    `json:"id"`
+	Slug     string `json:"slug"`
+	ClientID string `json:"client_id"`
 }

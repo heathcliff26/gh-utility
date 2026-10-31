@@ -907,7 +907,7 @@ func TestSetCheckRunStatus(t *testing.T) {
 
 		client := NewClient(s.URL)
 
-		err := client.SetCheckRunStatus(token, repo, name, commit, description, detailsURL, status, checkRuns)
+		err := client.SetCheckRunStatus(token, repo, name, commit, description, detailsURL, status, checkRuns, 0)
 		assert.NoError(err, "Should create PR")
 	})
 	t.Run("Update", func(t *testing.T) {
@@ -922,7 +922,7 @@ func TestSetCheckRunStatus(t *testing.T) {
 
 		checkRuns := append(checkRuns, CheckRun{ID: id, Name: name, HeadSHA: commit})
 
-		err := client.SetCheckRunStatus(token, repo, name, commit, description, detailsURL, status, checkRuns)
+		err := client.SetCheckRunStatus(token, repo, name, commit, description, detailsURL, status, checkRuns, 0)
 		assert.NoError(err, "Should update PR")
 	})
 	t.Run("UpdateDuplicates", func(t *testing.T) {
@@ -937,7 +937,7 @@ func TestSetCheckRunStatus(t *testing.T) {
 
 		checkRuns := append(checkRuns, CheckRun{ID: id - 1, Name: name, HeadSHA: commit}, CheckRun{ID: id, Name: name, HeadSHA: commit}, CheckRun{ID: id - 2, Name: name, HeadSHA: commit})
 
-		err := client.SetCheckRunStatus(token, repo, name, commit, description, detailsURL, status, checkRuns)
+		err := client.SetCheckRunStatus(token, repo, name, commit, description, detailsURL, status, checkRuns, 0)
 		assert.NoError(err, "Should update PR")
 	})
 	t.Run("CreateBecauseCompleted", func(t *testing.T) {
@@ -952,7 +952,49 @@ func TestSetCheckRunStatus(t *testing.T) {
 
 		checkRuns := append(checkRuns, CheckRun{ID: id, Name: name, HeadSHA: commit, Status: "completed"})
 
-		err := client.SetCheckRunStatus(token, repo, name, commit, description, detailsURL, status, checkRuns)
+		err := client.SetCheckRunStatus(token, repo, name, commit, description, detailsURL, status, checkRuns, 0)
 		assert.NoError(err, "Should create PR")
+	})
+}
+
+func TestGetApp(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		assert := assert.New(t)
+		app := App{
+			ID:       123,
+			Slug:     "test-app",
+			ClientID: "client-id",
+		}
+
+		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(http.MethodGet, r.Method, "Should use GET method")
+			assert.Equal("/app", r.URL.Path, "Should use correct path")
+			assert.NotEmpty(r.Header.Get("Accept"), "Should set Accept header")
+
+			w.WriteHeader(http.StatusOK)
+			err := json.MarshalWrite(w, app)
+			assert.NoError(err, "Should encode response")
+		}))
+		defer s.Close()
+
+		client := NewClient(s.URL)
+
+		result, err := client.GetApp("testtoken")
+		assert.NoError(err, "Should succeed")
+		assert.Equal(&app, result, "Should return app details")
+	})
+	t.Run("Failure", func(t *testing.T) {
+		assert := assert.New(t)
+
+		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer s.Close()
+
+		client := NewClient(s.URL)
+
+		app, err := client.GetApp("testtoken")
+		assert.ErrorContains(err, "failed to get app", "Should return error")
+		assert.Nil(app, "Should not return app details")
 	})
 }

@@ -118,6 +118,7 @@ func TestFindLatestCheckRun(t *testing.T) {
 	tMatrix := []struct {
 		Name      string
 		CheckRuns []CheckRun
+		AppID     int
 		Expected  *CheckRun
 	}{
 		{
@@ -144,13 +145,22 @@ func TestFindLatestCheckRun(t *testing.T) {
 			},
 			Expected: &CheckRun{ID: 3, Name: "build"},
 		},
+		{
+			Name: "MultipleApps",
+			CheckRuns: []CheckRun{
+				{ID: 1, Name: "build", App: App{ID: 2}},
+				{ID: 3, Name: "build", App: App{ID: 1}},
+			},
+			AppID:    2,
+			Expected: &CheckRun{ID: 1, Name: "build", App: App{ID: 2}},
+		},
 	}
 
 	for _, tCase := range tMatrix {
 		t.Run(tCase.Name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			checkRun := findLatestCheckRun("build", tCase.CheckRuns)
+			checkRun := findLatestCheckRun("build", tCase.CheckRuns, tCase.AppID)
 			assert.Equal(tCase.Expected, checkRun)
 		})
 	}

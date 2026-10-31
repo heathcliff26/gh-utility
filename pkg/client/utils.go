@@ -102,11 +102,11 @@ func translateCheckRunStatus(status string) (string, string, error) {
 	}
 }
 
-// Find the latest check-run with the given name in the provided list.
-func findLatestCheckRun(name string, checkRuns []CheckRun) *CheckRun {
+// Find the latest check-run with the given name and app in the provided list.
+func findLatestCheckRun(name string, checkRuns []CheckRun, appID int) *CheckRun {
 	var latestCheckRun *CheckRun
 	for _, checkRun := range checkRuns {
-		if checkRun.Name == name {
+		if checkRun.Name == name && checkRun.App.ID == appID {
 			if latestCheckRun == nil || checkRun.ID > latestCheckRun.ID {
 				latestCheckRun = &checkRun
 			}

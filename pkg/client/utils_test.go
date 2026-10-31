@@ -113,3 +113,45 @@ func TestTranslateCheckRunStatus(t *testing.T) {
 		})
 	}
 }
+
+func TestFindLatestCheckRun(t *testing.T) {
+	tMatrix := []struct {
+		Name      string
+		CheckRuns []CheckRun
+		Expected  *CheckRun
+	}{
+		{
+			Name:      "NoCheckRuns",
+			CheckRuns: nil,
+			Expected:  nil,
+		},
+		{
+			Name:      "NoMatchingCheckRun",
+			CheckRuns: []CheckRun{{ID: 1, Name: "test"}},
+			Expected:  nil,
+		},
+		{
+			Name:      "OneCheckRun",
+			CheckRuns: []CheckRun{{ID: 1, Name: "build"}},
+			Expected:  &CheckRun{ID: 1, Name: "build"},
+		},
+		{
+			Name: "MultipleCheckRuns",
+			CheckRuns: []CheckRun{
+				{ID: 1, Name: "build"},
+				{ID: 3, Name: "build"},
+				{ID: 2, Name: "test"},
+			},
+			Expected: &CheckRun{ID: 3, Name: "build"},
+		},
+	}
+
+	for _, tCase := range tMatrix {
+		t.Run(tCase.Name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			checkRun := findLatestCheckRun("build", tCase.CheckRuns)
+			assert.Equal(tCase.Expected, checkRun)
+		})
+	}
+}

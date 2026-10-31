@@ -101,3 +101,16 @@ func translateCheckRunStatus(status string) (string, string, error) {
 		return "", "", fmt.Errorf("unknown status '%s'", status)
 	}
 }
+
+// Find the latest check-run with the given name in the provided list.
+func findLatestCheckRun(name string, checkRuns []CheckRun) *CheckRun {
+	var latestCheckRun *CheckRun
+	for _, checkRun := range checkRuns {
+		if checkRun.Name == name {
+			if latestCheckRun == nil || checkRun.ID > latestCheckRun.ID {
+				latestCheckRun = &checkRun
+			}
+		}
+	}
+	return latestCheckRun
+}

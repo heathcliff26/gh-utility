@@ -31,16 +31,11 @@ func TestNewCommand(t *testing.T) {
 func TestRun(t *testing.T) {
 	assert := assert.New(t)
 
-	cmd := NewCommand()
-
-	flags := []string{fetchDepthFlag, "1"}
-	_ = cmd.ParseFlags(flags)
-
 	tmpDir := t.TempDir()
 
 	args := []string{"https://github.com/heathcliff26/gh-utility.git", tmpDir}
 
-	err := run(cmd, args)
+	err := run(args, 1)
 	assert.NoError(err, "Should run without error")
 
 	ls, err := os.ReadDir(tmpDir)

@@ -31,7 +31,7 @@ func TestRun(t *testing.T) {
 
 		cmd := NewCommand()
 
-		err := run(cmd)
+		err := run(cmd, "", "", "", "", "")
 		assert.Error(err, "Should fail")
 	})
 	t.Run("ConsoleOutput", func(t *testing.T) {
@@ -49,20 +49,13 @@ func TestRun(t *testing.T) {
 
 		privateKey := testutils.GenerateRSAKey(t)
 
-		args := []string{
-			"--" + appKeyPathFlag, privateKey,
-			"--" + clientIDFlag, "abcdf",
-			"--" + installationIDFlag, "12345",
-			"--" + endpointFlag, s.URL,
-		}
 		cmd := NewCommand()
-		_ = cmd.ParseFlags(args)
 
 		var buf bytes.Buffer
 		w := io.Writer(&buf)
 		cmd.SetOut(w)
 
-		err := run(cmd)
+		err := run(cmd, privateKey, "abcdf", "12345", "", s.URL)
 		assert.NoError(err, "Should succeed")
 		assert.Equal("abc\n", buf.String(), "Should output token to console")
 	})
@@ -83,21 +76,13 @@ func TestRun(t *testing.T) {
 
 		outputFile := filepath.Join(t.TempDir(), "token.txt")
 
-		args := []string{
-			"--" + appKeyPathFlag, privateKey,
-			"--" + clientIDFlag, "abcdf",
-			"--" + installationIDFlag, "12345",
-			"--" + endpointFlag, s.URL,
-			"--" + outputFlag, outputFile,
-		}
 		cmd := NewCommand()
-		_ = cmd.ParseFlags(args)
 
 		var buf bytes.Buffer
 		w := io.Writer(&buf)
 		cmd.SetOut(w)
 
-		err := run(cmd)
+		err := run(cmd, privateKey, "abcdf", "12345", outputFile, s.URL)
 		assert.NoError(err, "Should succeed")
 		assert.Empty(buf.String(), "Should not output token to console")
 		token, err := os.ReadFile(outputFile)

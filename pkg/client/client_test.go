@@ -858,6 +858,7 @@ func TestSetCheckRunStatus(t *testing.T) {
 	checkRuns := []CheckRun{
 		{ID: 1, Name: "ci/t1", HeadSHA: commit},
 		{ID: 2, Name: "ci/t2", HeadSHA: commit},
+		{ID: 3, Name: "ci/t2", HeadSHA: commit},
 	}
 
 	newServer := func(t *testing.T) *httptest.Server {
@@ -923,5 +924,35 @@ func TestSetCheckRunStatus(t *testing.T) {
 
 		err := client.SetCheckRunStatus(token, repo, name, commit, description, detailsURL, status, checkRuns)
 		assert.NoError(err, "Should update PR")
+	})
+	t.Run("UpdateDuplicates", func(t *testing.T) {
+		assert := assert.New(t)
+
+		expectedEndpoint = 1
+
+		s := newServer(t)
+		defer s.Close()
+
+		client := NewClient(s.URL)
+
+		checkRuns := append(checkRuns, CheckRun{ID: id - 1, Name: name, HeadSHA: commit}, CheckRun{ID: id, Name: name, HeadSHA: commit}, CheckRun{ID: id - 2, Name: name, HeadSHA: commit})
+
+		err := client.SetCheckRunStatus(token, repo, name, commit, description, detailsURL, status, checkRuns)
+		assert.NoError(err, "Should update PR")
+	})
+	t.Run("CreateBecauseCompleted", func(t *testing.T) {
+		assert := assert.New(t)
+
+		expectedEndpoint = 0
+
+		s := newServer(t)
+		defer s.Close()
+
+		client := NewClient(s.URL)
+
+		checkRuns := append(checkRuns, CheckRun{ID: id, Name: name, HeadSHA: commit, Status: "completed"})
+
+		err := client.SetCheckRunStatus(token, repo, name, commit, description, detailsURL, status, checkRuns)
+		assert.NoError(err, "Should create PR")
 	})
 }

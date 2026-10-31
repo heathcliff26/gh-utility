@@ -65,7 +65,7 @@
 				
 				<option value="file4">github.com/heathcliff26/gh-utility/cmd/pr/cmd.go (77.8%)</option>
 				
-				<option value="file5">github.com/heathcliff26/gh-utility/cmd/status/cmd.go (81.6%)</option>
+				<option value="file5">github.com/heathcliff26/gh-utility/cmd/status/cmd.go (84.8%)</option>
 				
 				<option value="file6">github.com/heathcliff26/gh-utility/cmd/token/cmd.go (76.9%)</option>
 				
@@ -416,36 +416,24 @@ func NewCommand() *cobra.Command {
                 Use:   "status [flags] &lt;repository&gt; &lt;commit&gt; &lt;check-name&gt;=&lt;status&gt; [&lt;check-name&gt;=&lt;status&gt;...]",
                 Short: "Set or update the status of GitHub check runs on commits",
                 Args:  cobra.MinimumNArgs(3),
-                Run: func(cmd *cobra.Command, args []string) </span>{
-                        <span class="cov0" title="0">err := run(cmd, args)
-                        if err != nil </span>{
-                                <span class="cov0" title="0">cmd.PrintErrln(cmd.ErrPrefix(), err)
-                                os.Exit(1)
-</span>                        }
-                },
+</span>        }
+
+        <span class="cov8" title="1">endpoint := cmd.Flags().StringP(endpointFlag, "e", client.DefaultEndpoint, "GitHub API endpoint")
+        description := cmd.Flags().StringP(descriptionFlag, "d", "", "Description for the status check(s)")
+        detailsURL := cmd.Flags().StringP(urlFlag, "u", "", "URL for the status check(s)")
+</span>
+        <span class="cov8" title="1">cmd.Run = func(cmd *cobra.Command, args []string) </span>{
+                <span class="cov0" title="0">err := run(cmd, args, *endpoint, *description, *detailsURL)
+                if err != nil </span>{
+                        <span class="cov0" title="0">cmd.PrintErrln(cmd.ErrPrefix(), err)
+                        os.Exit(1)
+</span>                }
         }
 
-        <span class="cov8" title="1">cmd.Flags().StringP(endpointFlag, "e", client.DefaultEndpoint, "GitHub API endpoint")
-        cmd.Flags().StringP(descriptionFlag, "d", "", "Description for the status check(s)")
-        cmd.Flags().StringP(urlFlag, "u", "", "URL for the status check(s)")
-</span>
         <span class="cov8" title="1">return cmd</span>
 }
 
-func run(cmd *cobra.Command, args []string) error {
-        <span class="cov8" title="1">endpoint, err := cmd.Flags().GetString(endpointFlag)
-        if err != nil </span>{
-                <span class="cov0" title="0">return err
-</span>        }
-        <span class="cov8" title="1">description, err := cmd.Flags().GetString(descriptionFlag)
-        if err != nil </span>{
-                <span class="cov0" title="0">return err
-</span>        }
-        <span class="cov8" title="1">detailsURL, err := cmd.Flags().GetString(urlFlag)
-        if err != nil </span>{
-                <span class="cov0" title="0">return err
-</span>        }
-
+func run(cmd *cobra.Command, args []string, endpoint, description, detailsURL string) error {
         <span class="cov8" title="1">repo := args[0]
         commit := args[1]
         checkPairs := args[2:]
@@ -467,8 +455,13 @@ func run(cmd *cobra.Command, args []string) error {
                 <span class="cov8" title="1">return fmt.Errorf("failed to get check runs for commit: %w", err)
 </span>        }
 
+        <span class="cov8" title="1">app, err := c.GetApp(token)
+        if err != nil </span>{
+                <span class="cov0" title="0">return fmt.Errorf("failed to get app: %w", err)
+</span>        }
+
         <span class="cov8" title="1">for name, status := range checks </span>{
-                <span class="cov8" title="1">err = c.SetCheckRunStatus(token, repo, name, commit, description, detailsURL, status, checkRuns)
+                <span class="cov8" title="1">err = c.SetCheckRunStatus(token, repo, name, commit, description, detailsURL, status, checkRuns, app.ID)
                 if err != nil </span>{
                         <span class="cov8" title="1">return fmt.Errorf("failed to set check run '%s': %w", name, err)
 </span>                }
@@ -1073,12 +1066,33 @@ func (c *Client) GetCheckRunsForCommit(token, repo, ref string) ([]CheckRun, err
 }
 
 // Check whether the check-run already exists in the provided list and call create or update accordingly
-func (c *Client) SetCheckRunStatus(token, repo, name, commit, description, detailsURL, status string, checkRuns []CheckRun) error {
-        <span class="cov8" title="1">checkRun := findLatestCheckRun(name, checkRuns)
+func (c *Client) SetCheckRunStatus(token, repo, name, commit, description, detailsURL, status string, checkRuns []CheckRun, appID int) error {
+        <span class="cov8" title="1">checkRun := findLatestCheckRun(name, checkRuns, appID)
         if checkRun != nil &amp;&amp; checkRun.Status != "completed" </span>{
                 <span class="cov8" title="1">return c.UpdateCheckRun(token, repo, checkRun.ID, name, commit, description, detailsURL, status)
 </span>        }
         <span class="cov8" title="1">return c.CreateCheckRun(token, repo, name, commit, description, detailsURL, status)</span>
+}
+
+// Get the app belonging to the token
+// API endpoint: GET /app
+// Parameters:
+// - token: The GitHub app installation token
+// Returns:
+// - The app details
+// - An error if any occurred
+func (c *Client) GetApp(token string) (*App, error) {
+        <span class="cov8" title="1">req, err := newRequest(http.MethodGet, fmt.Sprintf("%s/app", c.endpoint), nil, token)
+        if err != nil </span>{
+                <span class="cov0" title="0">return nil, fmt.Errorf("failed to create request: %w", err)
+</span>        }
+
+        <span class="cov8" title="1">var app App
+        err = c.do(req, http.StatusOK, &amp;app)
+        if err != nil </span>{
+                <span class="cov8" title="1">return nil, fmt.Errorf("failed to get app: %w", err)
+</span>        }
+        <span class="cov8" title="1">return &amp;app, nil</span>
 }
 
 // Send the given http request and parse the returned result
@@ -1236,11 +1250,18 @@ type CheckRun struct {
         Conclusion string          `json:"conclusion,omitempty"`
         Output     *CheckRunOutput `json:"output,omitempty"`
         DetailsURL string          `json:"details_url,omitempty"`
+        App        App             `json:"app,omitempty"`
 }
 
 type CheckRunsListResponse struct {
         TotalCount int        `json:"total_count"`
         CheckRuns  []CheckRun `json:"check_runs"`
+}
+
+type App struct {
+        ID       int    `json:"id"`
+        Slug     string `json:"slug"`
+        ClientID string `json:"client_id"`
 }
 </pre>
 		
@@ -1348,11 +1369,11 @@ func translateCheckRunStatus(status string) (string, string, error) {
         }
 }
 
-// Find the latest check-run with the given name in the provided list.
-func findLatestCheckRun(name string, checkRuns []CheckRun) *CheckRun {
+// Find the latest check-run with the given name and app in the provided list.
+func findLatestCheckRun(name string, checkRuns []CheckRun, appID int) *CheckRun {
         <span class="cov8" title="1">var latestCheckRun *CheckRun
         for _, checkRun := range checkRuns </span>{
-                <span class="cov8" title="1">if checkRun.Name == name </span>{
+                <span class="cov8" title="1">if checkRun.Name == name &amp;&amp; checkRun.App.ID == appID </span>{
                         <span class="cov8" title="1">if latestCheckRun == nil || checkRun.ID &gt; latestCheckRun.ID </span>{
                                 <span class="cov8" title="1">latestCheckRun = &amp;checkRun
 </span>                        }
